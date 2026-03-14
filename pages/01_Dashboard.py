@@ -10,14 +10,16 @@ from utils.chart_factory import (
     create_forecast_delta_figure,
     create_forecast_figure,
     create_gauge_figure,
+    create_live_signal_figure,
     create_ranked_bar_figure,
+    create_risk_timeline_figure,
     create_risk_radar,
     create_station_history_figure,
     create_timeline_figure,
 )
 from utils.data_loader import detect_axes, get_active_dataset, spatial_mean_series, to_display_array
 from utils.live_data import fetch_air_quality, fetch_forecast, fetch_noaa_station_history, fetch_current_weather, get_default_location_query, resolve_location
-from utils.risk_engine import build_risk_profile
+from utils.risk_engine import build_risk_profile, build_risk_timeline
 from utils.real_climate import get_real_global_temperature_frames
 from utils.style import render_app_shell, render_feature_card, render_info_banner, render_metric_card, render_page_hero, render_section_intro
 
@@ -86,6 +88,7 @@ def main() -> None:
         air_current or {"aqi": 1, "pm2_5": 0.0},
         noaa_result["history"] if noaa_result else None,
     )
+    risk_timeline = build_risk_timeline(forecast_df)
 
     if live_error:
         render_info_banner(
@@ -117,20 +120,26 @@ def main() -> None:
 
     render_section_intro(
         "Executive surface",
-        "Top-level views combine live forecast dynamics with long-range global context.",
+        "Top-level views now center on real Delhi forecast dynamics, air quality, and risk progression instead of treating Delhi as a side input.",
         eyebrow="Overview",
     )
     top_left, top_right = st.columns((1.18, 0.82))
     with top_left:
-        st.plotly_chart(
-            create_timeline_figure(
-                global_df,
-                title="Global activity timeline",
-                value_column="temperature",
-                y_label="Global mean temperature (deg C)",
-            ),
-            use_container_width=True,
-        )
+        if not forecast_df.empty and location:
+            st.plotly_chart(
+                create_live_signal_figure(forecast_df, title=f"{location['label']} live signal ribbon"),
+                use_container_width=True,
+            )
+        else:
+            st.plotly_chart(
+                create_timeline_figure(
+                    global_df,
+                    title="Global activity timeline",
+                    value_column="temperature",
+                    y_label="Global mean temperature (deg C)",
+                ),
+                use_container_width=True,
+            )
     with top_right:
         radar_tab, mix_tab = st.tabs(["Radar", "Mix"])
         with radar_tab:
@@ -167,19 +176,25 @@ def main() -> None:
         )
     with chart_right:
         render_section_intro(
-            "Recent anomaly bars",
-            "Monthly bars make short-term warming or cooling easier to read than a line alone.",
-            eyebrow="Anomaly",
+            "Risk pulse timeline",
+            "Stacked risk curves make the next Delhi forecast window feel more operational and easier to scan at a glance.",
+            eyebrow="Pulse",
         )
-        st.plotly_chart(
-            create_anomaly_bar_figure(
-                anomaly_bars[["time", "anomaly"]],
-                title="Global anomaly bars",
-                value_column="anomaly",
-                y_label="Temperature anomaly (deg C)",
-            ),
-            use_container_width=True,
-        )
+        if not risk_timeline.empty:
+            st.plotly_chart(
+                create_risk_timeline_figure(risk_timeline, title="Delhi forecast risk pulse"),
+                use_container_width=True,
+            )
+        else:
+            st.plotly_chart(
+                create_anomaly_bar_figure(
+                    anomaly_bars[["time", "anomaly"]],
+                    title="Global anomaly bars",
+                    value_column="anomaly",
+                    y_label="Temperature anomaly (deg C)",
+                ),
+                use_container_width=True,
+            )
 
     alerts_col, forecast_col = st.columns((0.82, 1.18))
     with alerts_col:
@@ -199,7 +214,7 @@ def main() -> None:
     with forecast_col:
         render_section_intro(
             "Forecast track",
-            "OpenWeather three-hour forecasts feed the short-range operational outlook.",
+            "OpenWeather three-hour forecasts feed the short-range Delhi outlook with smoother chart styling and clearer change signals.",
             eyebrow="Nowcasting",
         )
         if forecast_df.empty:
@@ -218,7 +233,7 @@ def main() -> None:
     with lower_left:
         render_section_intro(
             "Air quality stack",
-            "AQI and particulate trends provide a direct health-risk layer for the tracked location.",
+            "AQI and particulate trends provide a direct Delhi health-risk layer using the live air-pollution feed.",
             eyebrow="AQI",
         )
         if air_forecast.empty:

@@ -306,6 +306,7 @@ ATLAS_CSS = """
     [data-testid="stExpander"] {
         background: transparent;
         border-radius: 12px;
+        animation: atlasFadeUp 0.55s ease-out;
     }
 
     .atlas-hero {

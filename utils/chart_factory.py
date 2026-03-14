@@ -45,6 +45,7 @@ def _apply_chart_style(
             font=dict(color=TEXT_COLOR),
         ),
         showlegend=show_legend,
+        transition=dict(duration=550, easing="cubic-in-out"),
     )
     if xaxis_title is not None:
         figure.update_xaxes(
@@ -185,6 +186,7 @@ def create_time_series(
             name="Observed",
             line=dict(color=CYAN, width=2.6),
             marker=dict(size=4.5, color=CYAN),
+            line_shape="spline",
         )
     )
     figure.add_trace(
@@ -194,6 +196,7 @@ def create_time_series(
             mode="lines",
             name="Trend",
             line=dict(color=YELLOW, width=2.2, dash="dash"),
+            line_shape="spline",
         )
     )
     if anomaly_mask is not None and np.any(anomaly_mask):
@@ -441,8 +444,9 @@ def create_air_quality_figure(aq_df: pd.DataFrame, title: str) -> go.Figure:
             y=aq_df["pm2_5"],
             mode="lines",
             name="PM2.5",
-            line=dict(color=PINK, width=2.6),
-        )
+                line=dict(color=PINK, width=2.6),
+                line_shape="spline",
+            )
     )
     figure.add_trace(
         go.Scatter(
@@ -450,8 +454,9 @@ def create_air_quality_figure(aq_df: pd.DataFrame, title: str) -> go.Figure:
             y=aq_df["pm10"],
             mode="lines",
             name="PM10",
-            line=dict(color=YELLOW, width=2.4),
-        )
+                line=dict(color=YELLOW, width=2.4),
+                line_shape="spline",
+            )
     )
     figure.add_trace(
         go.Scatter(
@@ -530,8 +535,9 @@ def create_timeline_figure(series_df: pd.DataFrame, title: str, value_column: st
                 x=series_df["time"],
                 y=series_df[value_column],
                 mode="lines",
-                line=dict(color=color, width=2.7),
-                fill="tozeroy",
+            line=dict(color=color, width=2.7),
+            line_shape="spline",
+            fill="tozeroy",
                 fillcolor="rgba(0,229,255,0.10)" if color == CYAN else "rgba(255,92,138,0.12)",
                 name=y_label,
             )
@@ -555,6 +561,7 @@ def create_prediction_figure(
             mode="lines",
             name="Observed",
             line=dict(color=CYAN, width=2.6),
+            line_shape="spline",
         )
     )
     figure.add_trace(
@@ -564,6 +571,7 @@ def create_prediction_figure(
             mode="lines",
             name="Forecast",
             line=dict(color=YELLOW, width=2.6),
+            line_shape="spline",
         )
     )
     figure.add_trace(
@@ -758,6 +766,7 @@ def create_forecast_delta_figure(forecast_df: pd.DataFrame, title: str) -> go.Fi
                 mode="lines",
                 name="Precipitation chance",
                 line=dict(color=YELLOW, width=2.2),
+                line_shape="spline",
                 yaxis="y2",
                 hovertemplate="Time %{x}<br>Precip %{y:.0f}%<extra></extra>",
             )
@@ -789,9 +798,10 @@ def create_risk_radar(risk_scores: dict[str, float], title: str) -> go.Figure:
                 r=values,
                 theta=categories,
                 fill="toself",
-                line=dict(color=PINK, width=2.5),
-                fillcolor="rgba(255,92,138,0.18)",
-                name="Risk score",
+            line=dict(color=PINK, width=2.5),
+            line_shape="spline",
+            fillcolor="rgba(255,92,138,0.18)",
+            name="Risk score",
             )
         ]
     )
@@ -808,3 +818,68 @@ def create_risk_radar(risk_scores: dict[str, float], title: str) -> go.Figure:
         margin=dict(l=18, r=18, t=56, b=18),
     )
     return figure
+
+
+def create_live_signal_figure(forecast_df: pd.DataFrame, title: str) -> go.Figure:
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=forecast_df["time"],
+            y=forecast_df["temperature_c"],
+            mode="lines",
+            name="Temperature",
+            line=dict(color=CYAN, width=3),
+            line_shape="spline",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=forecast_df["time"],
+            y=forecast_df["feels_like_c"],
+            mode="lines",
+            name="Feels like",
+            line=dict(color=PINK, width=2.6, dash="dot"),
+            line_shape="spline",
+        )
+    )
+    figure.add_trace(
+        go.Bar(
+            x=forecast_df["time"],
+            y=forecast_df["humidity_pct"],
+            name="Humidity",
+            marker_color="rgba(255,216,77,0.28)",
+            yaxis="y2",
+            opacity=0.8,
+        )
+    )
+    figure.update_layout(
+        yaxis2=dict(
+            title="Humidity (%)",
+            overlaying="y",
+            side="right",
+            range=[0, 100],
+            showgrid=False,
+            color=TEXT_COLOR,
+        )
+    )
+    return _apply_chart_style(figure, title=title, xaxis_title="Time", yaxis_title="Temperature (deg C)")
+
+
+def create_risk_timeline_figure(timeline_df: pd.DataFrame, title: str) -> go.Figure:
+    figure = go.Figure()
+    colors = {"heatwave": PINK, "flood": CYAN, "storm": YELLOW}
+    for key, label in [("heatwave", "Heatwave"), ("flood", "Flood"), ("storm", "Storm")]:
+        if key not in timeline_df:
+            continue
+        figure.add_trace(
+            go.Scatter(
+                x=timeline_df["time"],
+                y=timeline_df[key],
+                mode="lines",
+                name=label,
+                line=dict(color=colors[key], width=2.5),
+                line_shape="spline",
+                stackgroup="risk",
+            )
+        )
+    return _apply_chart_style(figure, title=title, xaxis_title="Time", yaxis_title="Risk score")
