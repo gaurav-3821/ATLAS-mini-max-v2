@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: atlas-climate-intelligence
+    env: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.headless true --server.address 0.0.0.0 --server.port $PORT
+    envVars:
+      - key: OPENWEATHER_API_KEY
+        sync: false
+      - key: NOAA_API_TOKEN
+        sync: false
+      - key: ATLAS_DEFAULT_LOCATION
+        value: New Delhi, IN
+      - key: ATLAS_ENABLE_RUNTIME_CREDENTIAL_INPUTS
+        value: "false"

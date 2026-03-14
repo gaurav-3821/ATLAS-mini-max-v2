@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="96" fill="#F5F0E8"/>
+  <rect x="28" y="28" width="456" height="456" rx="82" stroke="#C8C0B4" stroke-width="8"/>
+  <circle cx="256" cy="256" r="154" fill="#FAF7F2" stroke="#1A1A1A" stroke-width="12"/>
+  <ellipse cx="256" cy="256" rx="154" ry="56" stroke="#1A1A1A" stroke-width="10"/>
+  <ellipse cx="256" cy="256" rx="56" ry="154" stroke="#1A1A1A" stroke-width="10"/>
+  <path d="M102 256H410" stroke="#1A1A1A" stroke-width="10" stroke-linecap="round"/>
+  <path d="M134 180H378" stroke="#D4654A" stroke-width="10" stroke-linecap="round"/>
+  <path d="M134 332H378" stroke="#D4654A" stroke-width="10" stroke-linecap="round"/>
+  <path d="M154 118C186 144 208 186 214 226" stroke="#2C5F2D" stroke-width="12" stroke-linecap="round"/>
+  <path d="M358 394C320 382 290 354 278 316" stroke="#2C5F2D" stroke-width="12" stroke-linecap="round"/>
+  <text x="256" y="456" text-anchor="middle" fill="#1A1A1A" font-size="52" font-family="Arial, sans-serif" font-weight="700">ATLAS</text>
+</svg>

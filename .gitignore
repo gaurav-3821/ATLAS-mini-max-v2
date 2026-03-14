@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+streamlit-smoke.log
+streamlit-smoke.err
+streamlit-capture.log
+streamlit-capture.err
+streamlit-final.log
+streamlit-final.err
+node_modules/
+package.json
+package-lock.json
+app (1).py
+climate_utils (1).py
+.streamlit/secrets.toml
+review-*.png
+*-demo.png
+atlas-review-board.png
+atlas-graph-review-board.png
