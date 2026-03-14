@@ -21,6 +21,7 @@ from utils.data_loader import (
     variable_options,
 )
 from utils.stats_engine import build_trend_series, compute_linear_trend, detect_anomalies, summarize_values
+from utils.real_climate import get_real_temperature_array
 from utils.style import render_app_shell, render_feature_card, render_info_banner, render_metric_card, render_page_hero, render_section_intro
 
 
@@ -59,7 +60,8 @@ def main() -> None:
     with st.sidebar:
         st.header("Explorer controls")
         selected_var = st.selectbox("Variable", variables, format_func=lambda name: labels.get(name, name))
-        data_array = to_display_array(dataset[selected_var], selected_var)
+        base_array = to_display_array(dataset[selected_var], selected_var)
+        data_array, source_label = get_real_temperature_array(base_array) if selected_var == "t2m" else (base_array, label)
         axes = detect_axes(data_array)
         time_values = get_time_values(data_array, axes)
         selected_time = st.select_slider(
@@ -90,7 +92,7 @@ def main() -> None:
     summary = summarize_values(map_slice)
     colorscale = _resolve_colorscale(selected_var, anomaly_mode)
 
-    render_info_banner(f"Explorer source: {label}. Variable: {format_variable_label(data_array, selected_var)}. Region: {region_name}.")
+    render_info_banner(f"Explorer source: {source_label}. Variable: {format_variable_label(data_array, selected_var)}. Region: {region_name}.")
 
     metric_cols = st.columns(4)
     with metric_cols[0]:

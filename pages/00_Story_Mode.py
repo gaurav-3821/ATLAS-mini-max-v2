@@ -5,8 +5,9 @@ import pandas as pd
 import streamlit as st
 
 from utils.chart_factory import create_globe, create_heatmap, create_prediction_figure, create_spatial_map, create_time_series
-from utils.data_loader import detect_axes, get_active_dataset, period_mean, prepare_map_slice, spatial_mean_series, to_display_array
+from utils.data_loader import detect_axes, get_active_dataset, period_mean, spatial_mean_series, to_display_array
 from utils.prediction_engine import build_forecast_frame
+from utils.real_climate import build_projection_scenarios, get_real_global_temperature_frames, get_real_temperature_array, load_nasa_eonet_events, load_nasa_gistemp_zonal_means
 from utils.story_content import STORY_STEPS
 from utils.style import render_app_shell, render_feature_card, render_info_banner, render_page_hero, render_section_intro, render_story_stepper
 
@@ -67,6 +68,10 @@ def main() -> None:
     )
 
     dataset, label = get_active_dataset()
+    real_temp, temp_source = get_real_temperature_array(to_display_array(dataset["t2m"], "t2m"))
+    global_monthly, global_annual, global_source = get_real_global_temperature_frames()
+    zonal_frame = load_nasa_gistemp_zonal_means()
+    eonet_events = load_nasa_eonet_events()
     scene_index = st.session_state.get("atlas_story_scene_index", 0)
 
     control_cols = st.columns((1, 1, 1, 1, 3))
@@ -102,7 +107,7 @@ def main() -> None:
         st.rerun()
 
     step = STORY_STEPS[scene_index]
-    data_array = to_display_array(dataset[step["variable"]], step["variable"])
+    data_array = real_temp if step["variable"] == "t2m" else to_display_array(dataset[step["variable"]], step["variable"])
     axes = detect_axes(data_array)
     start_date, end_date = step["year_range"]
     base_slice = period_mean(data_array, axes, pd.Timestamp(start_date), pd.Timestamp(end_date), step["region"])
@@ -113,7 +118,7 @@ def main() -> None:
         render_section_intro("Chapter", "Narrative context, AI interpretation, and scene controls live on the left panel.", eyebrow="Story")
         render_feature_card(step["title"], step["narrative_text"])
         render_info_banner(f"AI insight: {step['ai_insight']}")
-        render_feature_card("Scene source", f"Using {label} as the narrative data fabric for this scene.")
+        render_feature_card("Scene source", f"Using {temp_source if step['variable'] == 't2m' else label} as the narrative data fabric for this scene.")
         render_feature_card("Playback state", "Paused" if paused else "Ready for manual scene stepping")
         if "scenarios" in step:
             render_feature_card("Scenario set", ", ".join(step["scenarios"]).replace("_", " "))
@@ -146,9 +151,13 @@ def main() -> None:
                 use_container_width=True,
             )
         elif step["visual_component"] == "line_chart":
-            series = spatial_mean_series(data_array, axes, step["region"], anomaly_mode=False)
-            series_df = series.to_dataframe(name="value").reset_index().rename(columns={axes["time"]: "time"})
-            trend_df = series_df[["time", "value"]].rename(columns={"value": "trend"})
+            if global_annual is not None:
+                series_df = global_annual.rename(columns={"anomaly": "value"})[["time", "value"]].copy()
+                trend_df = series_df.rename(columns={"value": "trend"})
+            else:
+                series = spatial_mean_series(data_array, axes, step["region"], anomaly_mode=False)
+                series_df = series.to_dataframe(name="value").reset_index().rename(columns={axes["time"]: "time"})
+                trend_df = series_df[["time", "value"]].rename(columns={"value": "trend"})
             st.plotly_chart(
                 create_time_series(
                     series_df=series_df,
@@ -161,7 +170,23 @@ def main() -> None:
                 use_container_width=True,
             )
         elif step["visual_component"] == "event_markers":
-            st.plotly_chart(_render_event_map(base_slice, axes, step["title"]), use_container_width=True)
+            figure = _render_event_map(base_slice, axes, step["title"])
+            if not eonet_events.empty:
+                lat_r = np.deg2rad(eonet_events["lat"].astype(float).to_numpy())
+                lon_r = np.deg2rad(eonet_events["lon"].astype(float).to_numpy())
+                radius = 1.08
+                figure.add_scatter3d(
+                    x=radius * np.cos(lat_r) * np.cos(lon_r),
+                    y=radius * np.cos(lat_r) * np.sin(lon_r),
+                    z=radius * np.sin(lat_r),
+                    mode="markers+text",
+                    marker=dict(size=7, color="#FFD84D", line=dict(color="#FFFFFF", width=1)),
+                    text=eonet_events["title"],
+                    textposition="top center",
+                    hovertemplate="%{text}<extra></extra>",
+                    name="NASA EONET events",
+                )
+            st.plotly_chart(figure, use_container_width=True)
         elif step["visual_component"] == "projection_map":
             frames = _build_projection_frames(base_slice)
             scenario_name = st.segmented_control(
@@ -170,9 +195,16 @@ def main() -> None:
                 default="medium_emissions",
                 format_func=lambda value: value.replace("_", " ").title(),
             )
-            forecast_series = spatial_mean_series(data_array, axes, "Global", anomaly_mode=False)
-            observed_df = forecast_series.to_dataframe(name="value").reset_index().rename(columns={axes["time"]: "time"})
-            forecast_df = build_forecast_frame(observed_df, time_column="time", value_column="value", horizon=36)
+            if global_annual is not None:
+                observed_df = global_annual.rename(columns={"anomaly": "value"})[["time", "value"]].copy()
+                scenario_series = build_projection_scenarios(observed_df, "value")
+                forecast_df = scenario_series[scenario_name].rename(columns={"value": "forecast"})
+                forecast_df["lower"] = forecast_df["forecast"] - 0.12
+                forecast_df["upper"] = forecast_df["forecast"] + 0.12
+            else:
+                forecast_series = spatial_mean_series(data_array, axes, "Global", anomaly_mode=False)
+                observed_df = forecast_series.to_dataframe(name="value").reset_index().rename(columns={axes["time"]: "time"})
+                forecast_df = build_forecast_frame(observed_df, time_column="time", value_column="value", horizon=36)
             st.plotly_chart(
                 create_spatial_map(
                     frames[scenario_name],
@@ -194,6 +226,11 @@ def main() -> None:
                 ),
                 use_container_width=True,
             )
+            if zonal_frame is not None and "64N-90N" in zonal_frame.columns:
+                render_feature_card(
+                    "Observed zonal context",
+                    f"Latest Arctic zonal anomaly in NASA GISTEMP: {float(zonal_frame['64N-90N'].dropna().iloc[-1]):+.2f} deg C anomaly."
+                )
 
 
 if __name__ == "__main__":

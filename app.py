@@ -7,6 +7,7 @@ import streamlit as st
 from utils.chart_factory import create_globe, create_timeline_figure
 from utils.data_loader import detect_axes, get_active_dataset, spatial_mean_series, to_display_array
 from utils.live_data import fetch_air_quality, fetch_current_weather, get_default_location_query, get_deploy_source_count, get_source_status, resolve_location
+from utils.real_climate import get_real_global_temperature_frames, get_real_temperature_array
 from utils.style import (
     render_app_shell,
     render_feature_card,
@@ -45,6 +46,7 @@ def main() -> None:
     dataset, source_label = get_active_dataset()
     logo_path = Path(__file__).resolve().parent / "assets" / "atlas_logo.svg"
     live_snapshot = _load_live_snapshot(st.session_state.get("atlas_ops_location", get_default_location_query()))
+    real_monthly, _, real_source = get_real_global_temperature_frames()
 
     logo_col, hero_col = st.columns((0.12, 0.88))
     with logo_col:
@@ -87,12 +89,19 @@ def main() -> None:
         eyebrow="Now",
     )
     latest_temp = to_display_array(dataset["t2m"], "t2m")
+    latest_temp, source_label = get_real_temperature_array(latest_temp)
     latest_axes = detect_axes(latest_temp)
-    latest_series = spatial_mean_series(latest_temp, latest_axes, "Global", anomaly_mode=False)
-    latest_value = float(latest_series.values[-1])
+    if real_monthly is not None:
+        latest_value = float(real_monthly["anomaly"].iloc[-1])
+        source_label = real_source
+        timeline_df = real_monthly.rename(columns={"anomaly": "temperature"})[["time", "temperature"]].copy()
+    else:
+        latest_series = spatial_mean_series(latest_temp, latest_axes, "Global", anomaly_mode=False)
+        latest_value = float(latest_series.values[-1])
+        timeline_df = latest_series.to_dataframe(name="temperature").reset_index().rename(columns={latest_axes["time"]: "time"})
     metric_cols = st.columns(4)
     with metric_cols[0]:
-        render_metric_card("Global surface temperature", f"{latest_value:.2f} deg C", "Latest grid-wide mean from bundled climate baseline")
+        render_metric_card("Global surface temperature", f"{latest_value:.2f} deg C", f"Latest global anomaly from {source_label}")
     with metric_cols[1]:
         if live_snapshot:
             render_metric_card(
@@ -134,7 +143,6 @@ def main() -> None:
             use_container_width=True,
         )
     with timeline_col:
-        timeline_df = latest_series.to_dataframe(name="temperature").reset_index().rename(columns={latest_axes["time"]: "time"})
         st.plotly_chart(
             create_timeline_figure(
                 timeline_df,

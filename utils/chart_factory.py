@@ -112,38 +112,60 @@ def create_spatial_map(
     lon_values = np.where(lon_values > 180.0, lon_values - 360.0, lon_values)
     lat_values = np.asarray(map_slice[lat_axis].values)
     z_values = np.asarray(map_slice.values)
-    figure = go.Figure()
-    figure.add_trace(
-        go.Contour(
-            z=z_values,
-            x=lon_values,
-            y=lat_values,
-            colorscale=colorscale,
-            contours=dict(coloring="heatmap", showlines=False),
-            line=dict(width=0),
-            colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
-            hovertemplate="Lon %{x:.1f}<br>Lat %{y:.1f}<br>Value %{z:.2f}<extra></extra>",
-        )
-    )
-    figure.add_trace(
-        go.Contour(
-            z=z_values,
-            x=lon_values,
-            y=lat_values,
-            showscale=False,
-            contours=dict(coloring="none", showlines=True),
-            line=dict(color="rgba(255,255,255,0.16)", width=0.8),
-            hoverinfo="skip",
-        )
+    lon_mesh, lat_mesh = np.meshgrid(lon_values, lat_values)
+    marker_size = 7 if len(lat_values) <= 45 else 5
+    projection_map = {
+        "Analyst contour": "natural earth",
+        "Dense field": "equirectangular",
+        "Regional focus": "winkel tripel",
+        "Comparison delta": "natural earth",
+        "Projection map": "natural earth",
+        "Orbital map": "orthographic",
+    }
+    figure = go.Figure(
+        data=[
+            go.Scattergeo(
+                lon=lon_mesh.ravel(),
+                lat=lat_mesh.ravel(),
+                mode="markers",
+                marker=dict(
+                    size=marker_size,
+                    symbol="square",
+                    opacity=0.95,
+                    color=z_values.ravel(),
+                    colorscale=colorscale,
+                    line=dict(width=0),
+                    colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
+                ),
+                customdata=np.column_stack((lat_mesh.ravel(), lon_mesh.ravel(), z_values.ravel())),
+                hovertemplate="Lat %{customdata[0]:.1f}<br>Lon %{customdata[1]:.1f}<br>Value %{customdata[2]:.2f}<extra></extra>",
+                showlegend=False,
+            )
+        ]
     )
     subtitle = f"{title} - {projection} view" if projection else title
-    return _apply_chart_style(
-        figure,
+    figure.update_layout(
         title=subtitle,
-        xaxis_title="Longitude",
-        yaxis_title="Latitude",
-        show_legend=False,
+        margin=dict(l=10, r=10, t=56, b=12),
+        paper_bgcolor=PAPER_BG,
+        font=dict(family=FONT_FAMILY, color=TEXT_COLOR),
+        geo=dict(
+            projection_type=projection_map.get(projection, "natural earth"),
+            showframe=False,
+            showcoastlines=True,
+            coastlinecolor="rgba(255,255,255,0.42)",
+            showcountries=True,
+            countrycolor="rgba(255,255,255,0.18)",
+            showland=True,
+            landcolor="rgba(32,42,65,0.55)",
+            showocean=True,
+            oceancolor="rgba(7,11,22,0.88)",
+            lataxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.10)"),
+            lonaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.10)"),
+            bgcolor="rgba(0,0,0,0)",
+        ),
     )
+    return figure
 
 
 def create_time_series(
@@ -204,27 +226,47 @@ def create_globe(
     lat_radians = np.deg2rad(lat_values)
     lon_mesh, lat_mesh = np.meshgrid(lon_radians, lat_radians)
 
-    radius = 1.0
-    x = radius * np.cos(lat_mesh) * np.cos(lon_mesh)
-    y = radius * np.cos(lat_mesh) * np.sin(lon_mesh)
-    z = radius * np.sin(lat_mesh)
+    radius = 0.985
+    overlay_values = np.asarray(map_slice.values, dtype=float)
+    spread = np.nanmax(overlay_values) - np.nanmin(overlay_values)
+    if not np.isfinite(spread) or spread == 0.0:
+        normalized = np.zeros_like(overlay_values)
+    else:
+        normalized = (overlay_values - np.nanmean(overlay_values)) / spread
+    overlay_radius = 1.0 + normalized * 0.06
+
+    x = overlay_radius * np.cos(lat_mesh) * np.cos(lon_mesh)
+    y = overlay_radius * np.cos(lat_mesh) * np.sin(lon_mesh)
+    z = overlay_radius * np.sin(lat_mesh)
+    base_x = radius * np.cos(lat_mesh) * np.cos(lon_mesh)
+    base_y = radius * np.cos(lat_mesh) * np.sin(lon_mesh)
+    base_z = radius * np.sin(lat_mesh)
     customdata = np.dstack((np.rad2deg(lat_mesh), np.rad2deg(lon_mesh)))
 
-    figure = go.Figure(
-        data=[
-            go.Surface(
-                x=x,
-                y=y,
-                z=z,
-                surfacecolor=np.asarray(map_slice.values),
-                colorscale=colorscale,
-                colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
-                customdata=customdata,
-                showscale=True,
-                hovertemplate="Lat %{customdata[0]:.1f}<br>Lon %{customdata[1]:.1f}<br>Value %{surfacecolor:.2f}<extra></extra>",
-                lighting=dict(ambient=0.7, diffuse=0.75, roughness=0.9, specular=0.05),
-            )
-        ]
+    figure = go.Figure()
+    figure.add_surface(
+        x=base_x,
+        y=base_y,
+        z=base_z,
+        surfacecolor=np.ones_like(overlay_values),
+        colorscale=[[0.0, "#0F172A"], [1.0, "#23314F"]],
+        showscale=False,
+        hoverinfo="skip",
+        opacity=0.82,
+        lighting=dict(ambient=0.9, diffuse=0.5, roughness=1.0, specular=0.02),
+    )
+    figure.add_surface(
+        x=x,
+        y=y,
+        z=z,
+        surfacecolor=overlay_values,
+        colorscale=colorscale,
+        colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
+        customdata=customdata,
+        showscale=True,
+        hovertemplate="Lat %{customdata[0]:.1f}<br>Lon %{customdata[1]:.1f}<br>Value %{surfacecolor:.2f}<extra></extra>",
+        lighting=dict(ambient=0.75, diffuse=0.85, roughness=0.85, specular=0.08),
+        opacity=0.97,
     )
     figure.update_layout(
         title=title,
@@ -237,7 +279,7 @@ def create_globe(
             zaxis=dict(visible=False),
             bgcolor="rgba(0,0,0,0)",
             aspectmode="data",
-            camera=dict(eye=dict(x=1.55, y=1.2, z=0.8)),
+            camera=dict(eye=dict(x=1.7, y=1.32, z=0.88)),
         ),
     )
     return figure

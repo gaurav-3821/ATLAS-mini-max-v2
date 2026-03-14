@@ -19,6 +19,7 @@ from utils.data_loader import (
     spatial_mean_series,
     to_display_array,
 )
+from utils.real_climate import get_real_global_temperature_frames, get_real_temperature_array
 from utils.style import render_app_shell, render_info_banner, render_metric_card, render_page_hero, render_section_intro
 
 
@@ -43,6 +44,7 @@ def main() -> None:
     )
 
     dataset, label = get_active_dataset()
+    real_monthly, _, real_source = get_real_global_temperature_frames()
     region_name = st.sidebar.selectbox("Region", list(REGION_BOUNDS.keys()), index=0)
     baseline_a = st.sidebar.slider("Baseline start year", min_value=1950, max_value=2010, value=1961)
     baseline_b = st.sidebar.slider("Baseline end year", min_value=1965, max_value=2023, value=1990)
@@ -52,6 +54,7 @@ def main() -> None:
     compare_end = max(compare_end, compare_start)
 
     temp = to_display_array(dataset["t2m"], "t2m")
+    temp, temp_source = get_real_temperature_array(temp)
     precip = to_display_array(dataset["precipitation"], "precipitation")
     pressure = to_display_array(dataset["sea_level_pressure"], "sea_level_pressure")
     wind = to_display_array(dataset["wind_speed"], "wind_speed")
@@ -61,8 +64,12 @@ def main() -> None:
     pressure_axes = detect_axes(pressure)
     wind_axes = detect_axes(wind)
 
-    temp_series = spatial_mean_series(temp, temp_axes, region_name, anomaly_mode=False)
-    temp_frame = _to_frame(temp_series, temp_axes["time"])
+    if real_monthly is not None and region_name == "Global":
+        temp_frame = real_monthly.rename(columns={"anomaly": "value"})[["time", "value"]].copy()
+        temp_source = real_source
+    else:
+        temp_series = spatial_mean_series(temp, temp_axes, region_name, anomaly_mode=False)
+        temp_frame = _to_frame(temp_series, temp_axes["time"])
     baseline_mask = (temp_frame["time"].dt.year >= baseline_a) & (temp_frame["time"].dt.year <= baseline_b)
     baseline_mean = float(temp_frame.loc[baseline_mask, "value"].mean())
     temp_frame["anomaly"] = temp_frame["value"] - baseline_mean
@@ -94,7 +101,7 @@ def main() -> None:
     }
 
     render_info_banner(
-        f"Signals are derived from the bundled or uploaded NetCDF workspace ({label}) and aggregated over {region_name}."
+        f"Temperature signals are derived from {temp_source}; precipitation, pressure, and wind remain on the active workspace ({label}) over {region_name}."
     )
 
     metric_cols = st.columns(4)

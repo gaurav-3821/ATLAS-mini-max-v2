@@ -21,6 +21,7 @@ from utils.data_loader import (
     variable_options,
 )
 from utils.live_data import SATELLITE_LAYERS, fetch_satellite_snapshot, get_default_location_query, resolve_location
+from utils.real_climate import get_real_temperature_array
 from utils.style import render_app_shell, render_feature_card, render_info_banner, render_metric_card, render_page_hero, render_section_intro
 
 
@@ -57,7 +58,8 @@ def main() -> None:
     with st.sidebar:
         st.header("Map controls")
         selected_var = st.selectbox("Climate layer", variables, format_func=lambda name: labels.get(name, name))
-        data_array = to_display_array(dataset[selected_var], selected_var)
+        base_array = to_display_array(dataset[selected_var], selected_var)
+        data_array, source_label = get_real_temperature_array(base_array) if selected_var == "t2m" else (base_array, label)
         axes = detect_axes(data_array)
         time_values = get_time_values(data_array, axes)
         selected_time = st.select_slider(
@@ -80,7 +82,7 @@ def main() -> None:
     lon_values = region_view[axes["lon"]].values
 
     render_info_banner(
-        f"Map layer: {format_variable_label(data_array, selected_var)}. Source: {label}. Region filter currently targets {region_name}."
+        f"Map layer: {format_variable_label(data_array, selected_var)}. Source: {source_label}. Region filter currently targets {region_name}."
     )
 
     metric_cols = st.columns(4)
@@ -151,7 +153,7 @@ def main() -> None:
             "These ranked cells highlight where the selected layer is strongest or most unusual inside the current region window.",
             eyebrow="Hotspots",
         )
-        render_feature_card("Map readout", f"Current view: {region_name} in {projection.lower()} mode for {pd.Timestamp(selected_time).strftime('%B %Y')}.")
+        render_feature_card("Map readout", f"Current view: {region_name} in {projection.lower()} mode for {pd.Timestamp(selected_time).strftime('%B %Y')}. Temperature layers use NASA GISTEMP when available.")
         if hotspots.empty:
             st.info("No hotspot cells were generated for the current slice.")
         else:

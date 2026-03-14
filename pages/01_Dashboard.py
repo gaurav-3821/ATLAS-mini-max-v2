@@ -18,6 +18,7 @@ from utils.chart_factory import (
 from utils.data_loader import detect_axes, get_active_dataset, spatial_mean_series, to_display_array
 from utils.live_data import fetch_air_quality, fetch_forecast, fetch_noaa_station_history, fetch_current_weather, get_default_location_query, resolve_location
 from utils.risk_engine import build_risk_profile
+from utils.real_climate import get_real_global_temperature_frames
 from utils.style import render_app_shell, render_feature_card, render_info_banner, render_metric_card, render_page_hero, render_section_intro
 
 
@@ -47,9 +48,14 @@ def main() -> None:
     dataset, source_label = get_active_dataset()
     data_array = to_display_array(dataset["t2m"], "t2m")
     axes = detect_axes(data_array)
-    global_series = spatial_mean_series(data_array, axes, "Global", anomaly_mode=False)
-    global_df = global_series.to_dataframe(name="temperature").reset_index().rename(columns={axes["time"]: "time"})
-    recent_anomaly = float(global_df["temperature"].iloc[-1] - global_df["temperature"].tail(120).mean())
+    real_monthly, real_annual, real_source = get_real_global_temperature_frames()
+    if real_monthly is not None:
+        global_df = real_monthly.rename(columns={"anomaly": "temperature"})[["time", "temperature"]].copy()
+        source_label = real_source
+    else:
+        global_series = spatial_mean_series(data_array, axes, "Global", anomaly_mode=False)
+        global_df = global_series.to_dataframe(name="temperature").reset_index().rename(columns={axes["time"]: "time"})
+    recent_anomaly = float(global_df["temperature"].iloc[-1] - global_df["temperature"].tail(min(len(global_df), 120)).mean())
     anomaly_baseline = float(global_df["temperature"].tail(min(len(global_df), 240)).mean())
     anomaly_bars = global_df.tail(24).copy()
     anomaly_bars["anomaly"] = anomaly_bars["temperature"] - anomaly_baseline
@@ -93,7 +99,7 @@ def main() -> None:
 
     metric_cols = st.columns(5)
     with metric_cols[0]:
-        render_metric_card("Global temperature", f"{global_df['temperature'].iloc[-1]:.2f} deg C", "Latest historical grid mean")
+        render_metric_card("Global temperature", f"{global_df['temperature'].iloc[-1]:.2f} deg C", f"Latest global anomaly from {source_label}")
     with metric_cols[1]:
         if weather:
             render_metric_card("Tracked city", f"{weather['temperature_c']:.1f} deg C", str(location["label"]))
