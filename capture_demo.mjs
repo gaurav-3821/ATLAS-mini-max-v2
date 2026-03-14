@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 
 const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const baseUrl = 'http://127.0.0.1:8513';
+const baseUrl = 'http://127.0.0.1:8514';
 
 async function extractRoutes(page) {
   return page.locator('a').evaluateAll((anchors) => {
@@ -29,11 +29,14 @@ async function main() {
     args: ['--no-sandbox', '--disable-gpu'],
   });
 
-  const page = await browser.newPage({ viewport: { width: 1540, height: 1400 } });
+  const page = await browser.newPage({ viewport: { width: 1800, height: 1600 } });
   await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 90000 });
   await page.waitForTimeout(5000);
   const routeMap = await extractRoutes(page);
   await page.screenshot({ path: 'review-home.png', fullPage: true });
+
+  await openRoute(page, routeMap, 'Story Mode');
+  await page.screenshot({ path: 'review-story-mode.png', fullPage: true });
 
   await openRoute(page, routeMap, 'Dashboard');
   await page.screenshot({ path: 'review-dashboard.png', fullPage: true });

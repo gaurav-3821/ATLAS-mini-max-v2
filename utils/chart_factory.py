@@ -19,6 +19,19 @@ SLATE = "#94A3B8"
 CRIMSON = "#FF5C8A"
 
 
+def _downsample_grid(
+    lon_values: np.ndarray,
+    lat_values: np.ndarray,
+    z_values: np.ndarray,
+    *,
+    max_lat: int,
+    max_lon: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    lat_step = max(1, int(np.ceil(len(lat_values) / max_lat)))
+    lon_step = max(1, int(np.ceil(len(lon_values) / max_lon)))
+    return lon_values[::lon_step], lat_values[::lat_step], z_values[::lat_step, ::lon_step]
+
+
 def _apply_chart_style(
     figure: go.Figure,
     *,
@@ -45,7 +58,7 @@ def _apply_chart_style(
             font=dict(color=TEXT_COLOR),
         ),
         showlegend=show_legend,
-        transition=dict(duration=550, easing="cubic-in-out"),
+        transition=dict(duration=260, easing="cubic-in-out"),
     )
     if xaxis_title is not None:
         figure.update_xaxes(
@@ -109,12 +122,13 @@ def create_spatial_map(
 ) -> go.Figure:
     lat_axis = axes["lat"]
     lon_axis = axes["lon"]
-    lon_values = np.asarray(map_slice[lon_axis].values)
+    lon_values = np.asarray(map_slice[lon_axis].values, dtype=float)
     lon_values = np.where(lon_values > 180.0, lon_values - 360.0, lon_values)
-    lat_values = np.asarray(map_slice[lat_axis].values)
-    z_values = np.asarray(map_slice.values)
+    lat_values = np.asarray(map_slice[lat_axis].values, dtype=float)
+    z_values = np.asarray(map_slice.values, dtype=float)
+    lon_values, lat_values, z_values = _downsample_grid(lon_values, lat_values, z_values, max_lat=72, max_lon=144)
     lon_mesh, lat_mesh = np.meshgrid(lon_values, lat_values)
-    marker_size = 7 if len(lat_values) <= 45 else 5
+    marker_size = 6 if len(lat_values) <= 36 else 4
     projection_map = {
         "Analyst contour": "natural earth",
         "Dense field": "equirectangular",
@@ -132,7 +146,7 @@ def create_spatial_map(
                 marker=dict(
                     size=marker_size,
                     symbol="square",
-                    opacity=0.95,
+                    opacity=0.9,
                     color=z_values.ravel(),
                     colorscale=colorscale,
                     line=dict(width=0),
@@ -152,13 +166,15 @@ def create_spatial_map(
         font=dict(family=FONT_FAMILY, color=TEXT_COLOR),
         geo=dict(
             projection_type=projection_map.get(projection, "natural earth"),
+            resolution=50,
             showframe=False,
             showcoastlines=True,
-            coastlinecolor="rgba(255,255,255,0.42)",
+            coastlinecolor="rgba(255,255,255,0.55)",
+            coastlinewidth=1.1,
             showcountries=True,
-            countrycolor="rgba(255,255,255,0.18)",
+            countrycolor="rgba(255,255,255,0.22)",
             showland=True,
-            landcolor="rgba(32,42,65,0.55)",
+            landcolor="rgba(32,42,65,0.62)",
             showocean=True,
             oceancolor="rgba(7,11,22,0.88)",
             lataxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.10)"),
@@ -223,14 +239,15 @@ def create_globe(
 ) -> go.Figure:
     lat_axis = axes["lat"]
     lon_axis = axes["lon"]
-    lon_values = np.asarray(map_slice[lon_axis].values)
-    lat_values = np.asarray(map_slice[lat_axis].values)
+    lon_values = np.asarray(map_slice[lon_axis].values, dtype=float)
+    lat_values = np.asarray(map_slice[lat_axis].values, dtype=float)
+    overlay_values = np.asarray(map_slice.values, dtype=float)
+    lon_values, lat_values, overlay_values = _downsample_grid(lon_values, lat_values, overlay_values, max_lat=48, max_lon=96)
     lon_radians = np.deg2rad(lon_values)
     lat_radians = np.deg2rad(lat_values)
     lon_mesh, lat_mesh = np.meshgrid(lon_radians, lat_radians)
 
     radius = 0.985
-    overlay_values = np.asarray(map_slice.values, dtype=float)
     spread = np.nanmax(overlay_values) - np.nanmin(overlay_values)
     if not np.isfinite(spread) or spread == 0.0:
         normalized = np.zeros_like(overlay_values)
@@ -444,9 +461,9 @@ def create_air_quality_figure(aq_df: pd.DataFrame, title: str) -> go.Figure:
             y=aq_df["pm2_5"],
             mode="lines",
             name="PM2.5",
-                line=dict(color=PINK, width=2.6),
-                line_shape="spline",
-            )
+            line=dict(color=PINK, width=2.6),
+            line_shape="spline",
+        )
     )
     figure.add_trace(
         go.Scatter(
@@ -454,9 +471,9 @@ def create_air_quality_figure(aq_df: pd.DataFrame, title: str) -> go.Figure:
             y=aq_df["pm10"],
             mode="lines",
             name="PM10",
-                line=dict(color=YELLOW, width=2.4),
-                line_shape="spline",
-            )
+            line=dict(color=YELLOW, width=2.4),
+            line_shape="spline",
+        )
     )
     figure.add_trace(
         go.Scatter(
@@ -535,9 +552,9 @@ def create_timeline_figure(series_df: pd.DataFrame, title: str, value_column: st
                 x=series_df["time"],
                 y=series_df[value_column],
                 mode="lines",
-            line=dict(color=color, width=2.7),
-            line_shape="spline",
-            fill="tozeroy",
+                line=dict(color=color, width=2.7),
+                line_shape="spline",
+                fill="tozeroy",
                 fillcolor="rgba(0,229,255,0.10)" if color == CYAN else "rgba(255,92,138,0.12)",
                 name=y_label,
             )
@@ -798,10 +815,9 @@ def create_risk_radar(risk_scores: dict[str, float], title: str) -> go.Figure:
                 r=values,
                 theta=categories,
                 fill="toself",
-            line=dict(color=PINK, width=2.5),
-            line_shape="spline",
-            fillcolor="rgba(255,92,138,0.18)",
-            name="Risk score",
+                line=dict(color=PINK, width=2.5),
+                fillcolor="rgba(255,92,138,0.18)",
+                name="Risk score",
             )
         ]
     )
