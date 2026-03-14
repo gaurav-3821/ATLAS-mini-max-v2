@@ -83,7 +83,7 @@ def create_heatmap(
                 x=map_slice[lon_axis].values,
                 y=map_slice[lat_axis].values,
                 colorscale=colorscale,
-                colorbar=dict(title=colorbar_title, tickfont=dict(color=TEXT_COLOR), titlefont=dict(color=TEXT_COLOR)),
+                colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
                 hovertemplate="Lon %{x:.1f}<br>Lat %{y:.1f}<br>Value %{z:.2f}<extra></extra>",
             )
         ]
@@ -126,7 +126,7 @@ def create_spatial_map(
                 size=7,
                 color=map_slice.values.ravel(),
                 colorscale=colorscale,
-                colorbar=dict(title=colorbar_title, tickfont=dict(color=TEXT_COLOR), titlefont=dict(color=TEXT_COLOR)),
+                colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
                 opacity=0.92,
             ),
             hovertemplate="Lat %{lat:.1f}<br>Lon %{lon:.1f}<br>Value %{marker.color:.2f}<extra></extra>",
@@ -217,7 +217,7 @@ def create_globe(
                 size=marker_size,
                 color=map_slice.values.ravel(),
                 colorscale=colorscale,
-                colorbar=dict(title=colorbar_title, tickfont=dict(color=TEXT_COLOR), titlefont=dict(color=TEXT_COLOR)),
+                colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
                 opacity=0.88,
             ),
             hovertemplate="Lon %{lon:.1f}<br>Lat %{lat:.1f}<br>Value %{marker.color:.2f}<extra></extra>",
@@ -293,7 +293,7 @@ def create_animated_heatmap(
                 x=first[lon_axis].values,
                 y=first[lat_axis].values,
                 colorscale=colorscale,
-                colorbar=dict(title=colorbar_title, tickfont=dict(color=TEXT_COLOR), titlefont=dict(color=TEXT_COLOR)),
+                colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
                 hovertemplate="Lon %{x:.1f}<br>Lat %{y:.1f}<br>Value %{z:.2f}<extra></extra>",
             )
         ],
@@ -694,7 +694,8 @@ def create_seasonality_bar_figure(
 
 def create_forecast_delta_figure(forecast_df: pd.DataFrame, title: str) -> go.Figure:
     frame = forecast_df.copy()
-    frame["temp_delta_c"] = frame["temperature_c"].diff().fillna(0.0)
+    value_column = "temperature_c" if "temperature_c" in frame.columns else "forecast"
+    frame["temp_delta_c"] = frame[value_column].diff().fillna(0.0)
     colors = [PINK if value >= 0 else CYAN for value in frame["temp_delta_c"]]
     figure = go.Figure()
     figure.add_trace(
@@ -706,27 +707,28 @@ def create_forecast_delta_figure(forecast_df: pd.DataFrame, title: str) -> go.Fi
             hovertemplate="Time %{x}<br>Temp shift %{y:.2f} C<extra></extra>",
         )
     )
-    figure.add_trace(
-        go.Scatter(
-            x=frame["time"],
-            y=frame["precip_probability_pct"],
-            mode="lines",
-            name="Precipitation chance",
-            line=dict(color=YELLOW, width=2.2),
-            yaxis="y2",
-            hovertemplate="Time %{x}<br>Precip %{y:.0f}%<extra></extra>",
+    if "precip_probability_pct" in frame.columns:
+        figure.add_trace(
+            go.Scatter(
+                x=frame["time"],
+                y=frame["precip_probability_pct"],
+                mode="lines",
+                name="Precipitation chance",
+                line=dict(color=YELLOW, width=2.2),
+                yaxis="y2",
+                hovertemplate="Time %{x}<br>Precip %{y:.0f}%<extra></extra>",
+            )
         )
-    )
-    figure.update_layout(
-        yaxis2=dict(
-            title="Precipitation chance (%)",
-            overlaying="y",
-            side="right",
-            range=[0, 100],
-            showgrid=False,
-            color=TEXT_COLOR,
+        figure.update_layout(
+            yaxis2=dict(
+                title="Precipitation chance (%)",
+                overlaying="y",
+                side="right",
+                range=[0, 100],
+                showgrid=False,
+                color=TEXT_COLOR,
+            )
         )
-    )
     _apply_chart_style(figure, title=title, xaxis_title="Time", yaxis_title="Temperature shift (C)")
     figure.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.35)")
     return figure

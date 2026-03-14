@@ -544,7 +544,7 @@ def render_sidebar_navigation(active_page: str) -> None:
             """
             <div class="atlas-side-brand">
                 <div class="atlas-kicker">ATLAS</div>
-                <h3>Climate Intelligence</h3>
+                <h3>ATLAS mini max v2</h3>
                 <p>Operational climate monitoring, prediction workflows, and research-grade analysis.</p>
             </div>
             """,

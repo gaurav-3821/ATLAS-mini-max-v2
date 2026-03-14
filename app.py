@@ -19,7 +19,7 @@ from utils.style import (
 
 
 st.set_page_config(
-    page_title="ATLAS | Climate Intelligence Platform",
+    page_title="ATLAS mini max v2 | Climate Intelligence Platform",
     page_icon=":material/public:",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -54,7 +54,7 @@ def main() -> None:
     with hero_col:
         render_page_hero(
             "Climate intelligence platform",
-            "Planetary Climate Intelligence",
+            "ATLAS mini max v2",
             (
                 "ATLAS unifies live atmospheric signals, satellite imagery, historical climate grids, model-assisted "
                 "forecasting, and research workflows inside a single mission-control interface."

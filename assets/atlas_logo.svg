@@ -1,13 +1,37 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="96" fill="#F5F0E8"/>
-  <rect x="28" y="28" width="456" height="456" rx="82" stroke="#C8C0B4" stroke-width="8"/>
-  <circle cx="256" cy="256" r="154" fill="#FAF7F2" stroke="#1A1A1A" stroke-width="12"/>
-  <ellipse cx="256" cy="256" rx="154" ry="56" stroke="#1A1A1A" stroke-width="10"/>
-  <ellipse cx="256" cy="256" rx="56" ry="154" stroke="#1A1A1A" stroke-width="10"/>
-  <path d="M102 256H410" stroke="#1A1A1A" stroke-width="10" stroke-linecap="round"/>
-  <path d="M134 180H378" stroke="#D4654A" stroke-width="10" stroke-linecap="round"/>
-  <path d="M134 332H378" stroke="#D4654A" stroke-width="10" stroke-linecap="round"/>
-  <path d="M154 118C186 144 208 186 214 226" stroke="#2C5F2D" stroke-width="12" stroke-linecap="round"/>
-  <path d="M358 394C320 382 290 354 278 316" stroke="#2C5F2D" stroke-width="12" stroke-linecap="round"/>
-  <text x="256" y="456" text-anchor="middle" fill="#1A1A1A" font-size="52" font-family="Arial, sans-serif" font-weight="700">ATLAS</text>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="orb" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(512 520) rotate(90) scale(430)">
+      <stop offset="0" stop-color="#2F3135"/>
+      <stop offset="1" stop-color="#141519"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="160" y1="120" x2="860" y2="880" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A0A3A8"/>
+      <stop offset="0.35" stop-color="#52555B"/>
+      <stop offset="0.7" stop-color="#1D1F24"/>
+      <stop offset="1" stop-color="#707379"/>
+    </linearGradient>
+    <filter id="soft" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#000000"/>
+  <circle cx="512" cy="512" r="448" fill="url(#orb)"/>
+
+  <g stroke="url(#metal)" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M156 712C156 470 276 248 452 148" stroke-width="78"/>
+    <path d="M314 784C286 600 364 390 514 274" stroke-width="58"/>
+    <path d="M638 154C808 230 900 412 900 690" stroke-width="72"/>
+    <path d="M720 862C706 706 594 560 382 430" stroke-width="54"/>
+    <path d="M462 874C438 796 456 714 532 610" stroke-width="52"/>
+    <path d="M612 540C652 500 690 468 734 446" stroke-width="26"/>
+    <path d="M602 228C636 240 674 256 712 284" stroke-width="22"/>
+    <path d="M746 302C770 296 792 294 820 298" stroke-width="14"/>
+  </g>
+
+  <g opacity="0.22" filter="url(#soft)">
+    <path d="M174 712C174 470 286 262 450 170" stroke="#D7D8DB" stroke-width="24" stroke-linecap="round"/>
+    <path d="M644 174C792 246 874 414 878 690" stroke="#D7D8DB" stroke-width="20" stroke-linecap="round"/>
+    <path d="M734 844C680 760 594 648 402 462" stroke="#D7D8DB" stroke-width="18" stroke-linecap="round"/>
+  </g>
 </svg>

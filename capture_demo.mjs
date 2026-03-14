@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 
 const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const baseUrl = 'http://127.0.0.1:8511';
+const baseUrl = 'http://127.0.0.1:8513';
 
 async function extractRoutes(page) {
   return page.locator('a').evaluateAll((anchors) => {
