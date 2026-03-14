@@ -33,13 +33,13 @@ def main() -> None:
     render_page_hero(
         "Mission control",
         "Dashboard",
-        "A premium control surface for live weather, historical climate context, and risk signals.",
-        subtitle="Live metrics, alerts, and long-range climate context",
+        "A premium control surface for live weather, historical climate context, and risk signals focused on Delhi operations by default.",
+        subtitle="Delhi live metrics, alerts, and long-range climate context",
     )
 
     with st.sidebar:
         st.header("Operational inputs")
-        default_query = st.session_state.get("atlas_ops_location", get_default_location_query())
+        default_query = st.session_state.get("atlas_ops_location", "Delhi, IN")
         location_query = st.text_input("Tracked location", value=default_query)
         st.session_state["atlas_ops_location"] = location_query
         history_days = st.slider("NOAA history window", min_value=14, max_value=90, value=45, step=1)
@@ -89,6 +89,7 @@ def main() -> None:
         render_info_banner(
             f"Tracking {location['label']} with live weather, AQI, and station context layered over the historical climate baseline from {source_label}."
         )
+    render_feature_card("Operational target", f"Primary dashboard context is pinned to {location['label'] if location else 'Delhi, IN'} so the live and historical views point to the same place.")
 
     metric_cols = st.columns(5)
     with metric_cols[0]:

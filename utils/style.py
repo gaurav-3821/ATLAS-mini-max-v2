@@ -7,6 +7,7 @@ import streamlit as st
 
 
 NAV_ITEMS = [
+    {"label": "Story Mode", "path": "pages/00_Story_Mode.py", "icon": ":material/play_circle:"},
     {"label": "Dashboard", "path": "pages/01_Dashboard.py", "icon": ":material/dashboard:"},
     {"label": "Global Map", "path": "pages/02_Global_Climate_Map.py", "icon": ":material/public:"},
     {"label": "Climate Signals", "path": "pages/03_Climate_Signals.py", "icon": ":material/query_stats:"},
@@ -713,11 +714,12 @@ def render_story_stepper(steps: list[dict[str, str]], active_index: int) -> None
     chips: list[str] = []
     for idx, step in enumerate(steps):
         active_class = "active" if idx == active_index else ""
+        sublabel = step.get("region") or step.get("title") or ""
         chips.append(
             f"""
             <div class="atlas-step-chip {active_class}">
                 <strong>{idx + 1}. {_escape(step["slug"])}</strong>
-                <span>{_escape(step["region"])}</span>
+                <span>{_escape(sublabel)}</span>
             </div>
             """
         )

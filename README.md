@@ -11,6 +11,7 @@ The current build blends:
 ## Product Modules
 
 - `Landing`: premium product intro with global preview and source status
+- `Story Mode`: guided climate narrative with chapter-based maps, charts, and projections
 - `Dashboard`: live climate metrics, AQI, forecast, and risk radar
 - `Global Map`: interactive globe, heatmaps, hotspots, and satellite context
 - `Climate Signals`: long-range anomalies and comparison views
@@ -47,7 +48,7 @@ Supported names:
 ```bash
 OPENWEATHER_API_KEY=<your key>
 NOAA_API_TOKEN=<your token>
-ATLAS_DEFAULT_LOCATION=New Delhi, IN
+ATLAS_DEFAULT_LOCATION=Delhi, IN
 ATLAS_ENABLE_RUNTIME_CREDENTIAL_INPUTS=false
 ```
 
@@ -79,7 +80,7 @@ Set these environment variables in the host:
 ```bash
 OPENWEATHER_API_KEY=<your key>
 NOAA_API_TOKEN=<your token>
-ATLAS_DEFAULT_LOCATION=New Delhi, IN
+ATLAS_DEFAULT_LOCATION=Delhi, IN
 ATLAS_ENABLE_RUNTIME_CREDENTIAL_INPUTS=false
 ```
 

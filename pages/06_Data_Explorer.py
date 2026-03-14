@@ -21,7 +21,7 @@ from utils.data_loader import (
     variable_options,
 )
 from utils.stats_engine import build_trend_series, compute_linear_trend, detect_anomalies, summarize_values
-from utils.style import render_app_shell, render_info_banner, render_metric_card, render_page_hero, render_section_intro
+from utils.style import render_app_shell, render_feature_card, render_info_banner, render_metric_card, render_page_hero, render_section_intro
 
 
 st.set_page_config(page_title="ATLAS | Data Explorer", page_icon=":material/travel_explore:", layout="wide")
@@ -42,13 +42,13 @@ def _resolve_colorscale(variable_name: str, anomaly_mode: bool) -> str:
 def main() -> None:
     render_app_shell(
         "Data Explorer",
-        "Freeform dataset browsing, map analytics, local time-series extraction, and exports.",
+        "Freeform dataset browsing, map analytics, local time-series extraction, and exports with much clearer maps.",
         search_placeholder="Search variable, region, or timeline",
     )
     render_page_hero(
         "Scientific workspace",
         "Data Explorer",
-        "Explore gridded climate datasets with multiple map styles, local extraction, comparisons, and animated historical playback.",
+        "Explore gridded climate datasets with clearer maps, local extraction, comparisons, and animated historical playback.",
         subtitle="Flexible analysis on top of the bundled or uploaded NetCDF grid",
     )
 
@@ -69,7 +69,7 @@ def main() -> None:
             format_func=lambda ts: pd.Timestamp(ts).strftime("%Y-%m"),
         )
         region_name = st.selectbox("Region", list(REGION_BOUNDS.keys()), index=0)
-        projection = st.selectbox("Projection", ["Equirectangular", "Robinson", "Orthographic"], index=1)
+        projection = st.selectbox("Map style", ["Analyst contour", "Dense field", "Regional focus"], index=0)
         anomaly_mode = st.toggle("Anomaly mode", value=False)
         compare_start = st.slider("Compare window A start", min_value=1950, max_value=2004, value=1961)
         compare_end = st.slider("Compare window B end", min_value=1980, max_value=2023, value=2023)
@@ -102,6 +102,8 @@ def main() -> None:
     with metric_cols[3]:
         render_metric_card("Trend", f"{trend['slope_per_year']:+.3f}/yr", f"{int(anomalies['count'])} anomalies at selected point")
 
+    render_feature_card("Explorer focus", f"Map is centered on {region_name} with a sampled point near ({selected_lat:.1f}, {selected_lon:.1f}) using {projection.lower()} styling.")
+
     tab_explore, tab_compare, tab_timelapse = st.tabs(["Explore", "Compare", "Timelapse"])
 
     with tab_explore:
@@ -111,7 +113,7 @@ def main() -> None:
                 create_spatial_map(
                     map_slice,
                     axes,
-                    title=f"{format_variable_label(data_array, selected_var)} · {pd.Timestamp(selected_time).strftime('%B %Y')}",
+                    title=f"{format_variable_label(data_array, selected_var)} - {pd.Timestamp(selected_time).strftime('%B %Y')}",
                     colorscale=colorscale,
                     colorbar_title=format_variable_units(data_array) or selected_var,
                     projection=projection,
@@ -164,12 +166,13 @@ def main() -> None:
                 use_container_width=True,
             )
         st.plotly_chart(
-            create_heatmap(
+            create_spatial_map(
                 difference,
                 axes,
                 title="Difference map",
                 colorscale="RdBu_r",
                 colorbar_title=format_variable_units(data_array) or selected_var,
+                projection="Comparison delta",
             ),
             use_container_width=True,
         )
@@ -180,7 +183,7 @@ def main() -> None:
             create_animated_heatmap(
                 annual_view,
                 axes,
-                title=f"Annual timelapse · {format_variable_label(data_array, selected_var)}",
+                title=f"Annual timelapse - {format_variable_label(data_array, selected_var)}",
                 colorscale=colorscale,
                 colorbar_title=format_variable_units(data_array) or selected_var,
             ),

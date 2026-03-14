@@ -40,14 +40,14 @@ def _layer_palette(variable_name: str, anomaly_mode: bool) -> str:
 def main() -> None:
     render_app_shell(
         "Global Map",
-        "Interactive global field views with layer controls, timeline scrubbing, and satellite context.",
-        search_placeholder="Search a region, country proxy, or layer",
+        "Interactive global field views with better 2D readability, orbital context, timeline scrubbing, and satellite overlays.",
+        search_placeholder="Search a region, layer, or hotspot",
     )
     render_page_hero(
         "Planet view",
         "Global Climate Map",
-        "A dual-view climate map with orbital context, signal hotspots, and satellite overlays.",
-        subtitle="Interactive globe, map layers, and NASA imagery context",
+        "A clearer climate map built around an analyst-friendly 2D surface, a cinematic orbital globe, hotspot ranking, and NASA imagery context.",
+        subtitle="Readable 2D fields, orbital globe context, and satellite overlays",
     )
 
     dataset, label = get_active_dataset()
@@ -67,7 +67,7 @@ def main() -> None:
             format_func=lambda ts: pd.Timestamp(ts).strftime("%Y-%m"),
         )
         region_name = st.selectbox("Region filter", list(REGION_BOUNDS.keys()), index=0)
-        projection = st.selectbox("Map projection", ["Equirectangular", "Robinson", "Orthographic"], index=1)
+        projection = st.selectbox("2D map style", ["Analyst contour", "Dense field", "Regional focus"], index=0)
         anomaly_mode = st.toggle("Anomaly mode", value=False)
         satellite_layer = st.selectbox("Satellite overlay", list(SATELLITE_LAYERS.keys()), index=0)
         satellite_date = st.date_input("Satellite date", value=date.today() - timedelta(days=1), max_value=date.today())
@@ -91,13 +91,13 @@ def main() -> None:
     with metric_cols[2]:
         render_metric_card("Hotspots", str(len(hotspots)), "Top-ranked cells by absolute signal strength")
     with metric_cols[3]:
-        render_metric_card("Region extent", region_name, f"{len(lat_values)} lat cells × {len(lon_values)} lon cells")
+        render_metric_card("Region extent", region_name, f"{len(lat_values)} lat cells x {len(lon_values)} lon cells")
 
     left_col, right_col = st.columns((1.35, 0.85))
     with left_col:
         render_section_intro(
             "Interactive map surface",
-            "Switch between geographic projection and orbital globe depending on whether you want local context or global pattern recognition.",
+            "Use the clearer 2D analyst surface for fast pattern reading, then switch to the orbital globe for broader spatial context.",
             eyebrow="Surface",
         )
         tab_map, tab_globe = st.tabs(["2D map", "Orbital globe"])
@@ -106,7 +106,7 @@ def main() -> None:
                 create_spatial_map(
                     map_slice,
                     axes,
-                    title=f"{format_variable_label(data_array, selected_var)} · {pd.Timestamp(selected_time).strftime('%B %Y')}",
+                    title=f"{format_variable_label(data_array, selected_var)} - {pd.Timestamp(selected_time).strftime('%B %Y')}",
                     colorscale=colorscale,
                     colorbar_title=format_variable_units(data_array) or selected_var,
                     projection=projection,
@@ -151,13 +151,14 @@ def main() -> None:
             "These ranked cells highlight where the selected layer is strongest or most unusual inside the current region window.",
             eyebrow="Hotspots",
         )
+        render_feature_card("Map readout", f"Current view: {region_name} in {projection.lower()} mode for {pd.Timestamp(selected_time).strftime('%B %Y')}.")
         if hotspots.empty:
             st.info("No hotspot cells were generated for the current slice.")
         else:
             st.dataframe(hotspots.head(10), use_container_width=True, hide_index=True)
         render_feature_card(
-            "Country filter proxy",
-            "This build uses region filters instead of country polygons so the historical NetCDF workflow stays fast and portable."
+            "Region logic",
+            "This build uses region filters instead of heavy country polygons so the historical NetCDF workflow stays fast and portable."
         )
         try:
             location_query = st.session_state.get("atlas_ops_location", get_default_location_query())

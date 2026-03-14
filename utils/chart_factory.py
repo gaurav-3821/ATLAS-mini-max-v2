@@ -83,6 +83,7 @@ def create_heatmap(
                 x=map_slice[lon_axis].values,
                 y=map_slice[lat_axis].values,
                 colorscale=colorscale,
+                zsmooth="best",
                 colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
                 hovertemplate="Lon %{x:.1f}<br>Lat %{y:.1f}<br>Value %{z:.2f}<extra></extra>",
             )
@@ -110,46 +111,39 @@ def create_spatial_map(
     lon_values = np.asarray(map_slice[lon_axis].values)
     lon_values = np.where(lon_values > 180.0, lon_values - 360.0, lon_values)
     lat_values = np.asarray(map_slice[lat_axis].values)
-    lon_mesh, lat_mesh = np.meshgrid(lon_values, lat_values)
-
-    projection_map = {
-        "Equirectangular": "equirectangular",
-        "Robinson": "robinson",
-        "Orthographic": "orthographic",
-    }
-    figure = go.Figure(
-        go.Scattergeo(
-            lon=lon_mesh.ravel(),
-            lat=lat_mesh.ravel(),
-            mode="markers",
-            marker=dict(
-                size=7,
-                color=map_slice.values.ravel(),
-                colorscale=colorscale,
-                colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
-                opacity=0.92,
-            ),
-            hovertemplate="Lat %{lat:.1f}<br>Lon %{lon:.1f}<br>Value %{marker.color:.2f}<extra></extra>",
+    z_values = np.asarray(map_slice.values)
+    figure = go.Figure()
+    figure.add_trace(
+        go.Contour(
+            z=z_values,
+            x=lon_values,
+            y=lat_values,
+            colorscale=colorscale,
+            contours=dict(coloring="heatmap", showlines=False),
+            line=dict(width=0),
+            colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
+            hovertemplate="Lon %{x:.1f}<br>Lat %{y:.1f}<br>Value %{z:.2f}<extra></extra>",
         )
     )
-    figure.update_geos(
-        projection_type=projection_map.get(projection, "equirectangular"),
-        showland=True,
-        landcolor="#182132",
-        showocean=True,
-        oceancolor="#0d1422",
-        coastlinecolor="#3c485d",
-        bgcolor="rgba(0,0,0,0)",
-        lataxis_gridcolor="rgba(255,255,255,0.06)",
-        lonaxis_gridcolor="rgba(255,255,255,0.06)",
+    figure.add_trace(
+        go.Contour(
+            z=z_values,
+            x=lon_values,
+            y=lat_values,
+            showscale=False,
+            contours=dict(coloring="none", showlines=True),
+            line=dict(color="rgba(255,255,255,0.16)", width=0.8),
+            hoverinfo="skip",
+        )
     )
-    figure.update_layout(
-        title=title,
-        margin=dict(l=10, r=10, t=56, b=12),
-        paper_bgcolor=PAPER_BG,
-        font=dict(family=FONT_FAMILY, color=TEXT_COLOR),
+    subtitle = f"{title} - {projection} view" if projection else title
+    return _apply_chart_style(
+        figure,
+        title=subtitle,
+        xaxis_title="Longitude",
+        yaxis_title="Latitude",
+        show_legend=False,
     )
-    return figure
 
 
 def create_time_series(
@@ -206,38 +200,45 @@ def create_globe(
     lon_axis = axes["lon"]
     lon_values = np.asarray(map_slice[lon_axis].values)
     lat_values = np.asarray(map_slice[lat_axis].values)
-    lon_mesh, lat_mesh = np.meshgrid(lon_values, lat_values)
+    lon_radians = np.deg2rad(lon_values)
+    lat_radians = np.deg2rad(lat_values)
+    lon_mesh, lat_mesh = np.meshgrid(lon_radians, lat_radians)
+
+    radius = 1.0
+    x = radius * np.cos(lat_mesh) * np.cos(lon_mesh)
+    y = radius * np.cos(lat_mesh) * np.sin(lon_mesh)
+    z = radius * np.sin(lat_mesh)
+    customdata = np.dstack((np.rad2deg(lat_mesh), np.rad2deg(lon_mesh)))
 
     figure = go.Figure(
-        go.Scattergeo(
-            lon=lon_mesh.ravel(),
-            lat=lat_mesh.ravel(),
-            mode="markers",
-            marker=dict(
-                size=marker_size,
-                color=map_slice.values.ravel(),
+        data=[
+            go.Surface(
+                x=x,
+                y=y,
+                z=z,
+                surfacecolor=np.asarray(map_slice.values),
                 colorscale=colorscale,
                 colorbar=dict(title=dict(text=colorbar_title, font=dict(color=TEXT_COLOR)), tickfont=dict(color=TEXT_COLOR)),
-                opacity=0.88,
-            ),
-            hovertemplate="Lon %{lon:.1f}<br>Lat %{lat:.1f}<br>Value %{marker.color:.2f}<extra></extra>",
-        )
-    )
-    figure.update_geos(
-        projection_type="orthographic",
-        showland=True,
-        landcolor="#182132",
-        showcountries=False,
-        showocean=True,
-        oceancolor="#08111d",
-        coastlinecolor="#41506a",
-        bgcolor="rgba(0,0,0,0)",
+                customdata=customdata,
+                showscale=True,
+                hovertemplate="Lat %{customdata[0]:.1f}<br>Lon %{customdata[1]:.1f}<br>Value %{surfacecolor:.2f}<extra></extra>",
+                lighting=dict(ambient=0.7, diffuse=0.75, roughness=0.9, specular=0.05),
+            )
+        ]
     )
     figure.update_layout(
         title=title,
         margin=dict(l=10, r=10, t=56, b=12),
         paper_bgcolor=PAPER_BG,
         font=dict(family=FONT_FAMILY, color=TEXT_COLOR),
+        scene=dict(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            zaxis=dict(visible=False),
+            bgcolor="rgba(0,0,0,0)",
+            aspectmode="data",
+            camera=dict(eye=dict(x=1.55, y=1.2, z=0.8)),
+        ),
     )
     return figure
 

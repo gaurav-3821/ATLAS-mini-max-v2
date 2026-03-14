@@ -64,9 +64,15 @@ def main() -> None:
 
     cta_cols = st.columns(2)
     with cta_cols[0]:
-        st.page_link("pages/01_Dashboard.py", label="Explore Dashboard", icon=":material/dashboard:")
+        st.page_link("pages/00_Story_Mode.py", label="Start Story Mode", icon=":material/play_circle:")
     with cta_cols[1]:
+        st.page_link("pages/01_Dashboard.py", label="Explore Dashboard", icon=":material/dashboard:")
+
+    secondary_cta_cols = st.columns(2)
+    with secondary_cta_cols[0]:
         st.page_link("pages/02_Global_Climate_Map.py", label="View Global Map", icon=":material/public:")
+    with secondary_cta_cols[1]:
+        st.page_link("pages/06_Data_Explorer.py", label="Open Data Explorer", icon=":material/travel_explore:")
 
     render_info_banner(
         (

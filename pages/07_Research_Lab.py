@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import streamlit as st
+import xarray as xr
 
 from utils.chart_factory import create_heatmap, create_prediction_figure
 from utils.data_loader import (
@@ -26,6 +27,17 @@ from utils.style import render_app_shell, render_feature_card, render_info_banne
 
 
 st.set_page_config(page_title="ATLAS | Research Lab", page_icon=":material/science:", layout="wide")
+
+
+def _scenario_pattern(data_array, axes: dict[str, str | None]) -> np.ndarray:
+    lat_axis = axes["lat"]
+    lon_axis = axes["lon"]
+    lat_values = np.asarray(data_array[lat_axis].values, dtype=float)
+    lon_values = np.asarray(data_array[lon_axis].values, dtype=float)
+    lat_grid, lon_grid = np.meshgrid(lat_values, lon_values, indexing="ij")
+    polar_amplification = 0.6 + 0.8 * (np.abs(lat_grid) / 90.0) ** 1.4
+    wave_texture = 0.75 + 0.25 * np.cos(np.deg2rad(lon_grid * 1.8)) + 0.15 * np.sin(np.deg2rad(lat_grid * 3.0))
+    return polar_amplification * wave_texture
 
 
 def main() -> None:
@@ -75,12 +87,17 @@ def main() -> None:
     )
 
     scenario_array = data_array.copy()
+    pattern_field = xr.DataArray(
+        _scenario_pattern(data_array, axes),
+        dims=(axes["lat"], axes["lon"]),
+        coords={axes["lat"]: data_array[axes["lat"]], axes["lon"]: data_array[axes["lon"]]},
+    )
     if variable == "t2m":
-        scenario_array = scenario_array + temp_offset
+        scenario_array = scenario_array + pattern_field * temp_offset
     elif variable == "precipitation":
-        scenario_array = scenario_array * precip_scale
+        scenario_array = scenario_array * (1.0 + (precip_scale - 1.0) * pattern_field)
     elif variable == "wind_speed":
-        scenario_array = scenario_array * wind_scale
+        scenario_array = scenario_array * (1.0 + (wind_scale - 1.0) * (0.65 + 0.35 * pattern_field))
 
     baseline_slice = prepare_map_slice(data_array, axes, pd.Timestamp(selected_time), region_name, anomaly_mode=False)
     scenario_slice = prepare_map_slice(scenario_array, axes, pd.Timestamp(selected_time), region_name, anomaly_mode=False)
@@ -110,7 +127,7 @@ def main() -> None:
     with top_left:
         render_section_intro(
             "Simulation runner",
-            "The lab applies simple perturbations so teams can compare a baseline field with a scenario field instantly.",
+            "The lab applies spatially varying perturbations so the scenario delta map stays visible and readable instead of collapsing into a uniform blank field.",
             eyebrow="Scenario",
         )
         st.plotly_chart(
@@ -153,7 +170,7 @@ def main() -> None:
         merged["forecast"] = model_forecast["forecast"].values[: len(merged)]
         rmse = float(np.sqrt(np.mean((merged["value"] - merged["forecast"]) ** 2)))
         render_feature_card("Holdout test", f"Approximate RMSE on the latest holdout window: {rmse:.3f}.")
-    render_feature_card("Scenario knobs", "Temperature offset, precipitation scale, and wind scale can all be adjusted in the sidebar.")
+    render_feature_card("Scenario knobs", "Temperature offset, precipitation scale, and wind scale now drive a spatially varying perturbation pattern.")
     render_feature_card("Dataset upload", "Uploaded NetCDF files become available immediately in the same historical analytics pipeline.")
 
 

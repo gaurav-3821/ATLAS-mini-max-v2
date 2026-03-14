@@ -85,10 +85,10 @@ COORDINATE_QUERY = re.compile(
 )
 
 REQUEST_HEADERS = {"User-Agent": "ATLAS-Climate-Intelligence/1.0"}
-DEMO_LOCATION = {"name": "New Delhi", "state": "Delhi", "country": "IN", "lat": 28.6139, "lon": 77.2090}
+DEMO_LOCATION = {"name": "Delhi", "state": "Delhi", "country": "IN", "lat": 28.6139, "lon": 77.2090}
 DEMO_LOCATIONS = {
-    "new delhi": {"name": "New Delhi", "state": "Delhi", "country": "IN", "lat": 28.6139, "lon": 77.2090},
-    "delhi": {"name": "New Delhi", "state": "Delhi", "country": "IN", "lat": 28.6139, "lon": 77.2090},
+    "new delhi": {"name": "Delhi", "state": "Delhi", "country": "IN", "lat": 28.6139, "lon": 77.2090},
+    "delhi": {"name": "Delhi", "state": "Delhi", "country": "IN", "lat": 28.6139, "lon": 77.2090},
     "san francisco": {"name": "San Francisco", "state": "California", "country": "US", "lat": 37.7749, "lon": -122.4194},
     "new york": {"name": "New York", "state": "New York", "country": "US", "lat": 40.7128, "lon": -74.0060},
     "london": {"name": "London", "state": "", "country": "GB", "lat": 51.5072, "lon": -0.1276},
@@ -269,7 +269,7 @@ def runtime_credential_entry_enabled() -> bool:
 
 
 def get_default_location_query() -> str:
-    return _secret_value(DEFAULT_LOCATION_SECRET_NAMES) or "New Delhi, IN"
+    return _secret_value(DEFAULT_LOCATION_SECRET_NAMES) or "Delhi, IN"
 
 
 def _configured_value(session_key: str, secret_names: tuple[str, ...]) -> str | None:

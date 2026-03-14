@@ -11,6 +11,6 @@ services:
       - key: NOAA_API_TOKEN
         sync: false
       - key: ATLAS_DEFAULT_LOCATION
-        value: New Delhi, IN
+        value: Delhi, IN
       - key: ATLAS_ENABLE_RUNTIME_CREDENTIAL_INPUTS
         value: "false"
