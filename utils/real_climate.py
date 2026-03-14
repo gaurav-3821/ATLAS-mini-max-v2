@@ -88,7 +88,9 @@ def load_nasa_gistemp_global_means() -> dict[str, pd.DataFrame] | None:
     except Exception:
         return None
 
-    annual_frame = annual_frame.rename(columns={"Year": "year"}).dropna(subset=["year"])
+    annual_frame = annual_frame.rename(columns={"Year": "year"})
+    annual_frame["year"] = pd.to_numeric(annual_frame["year"], errors="coerce")
+    annual_frame = annual_frame.dropna(subset=["year"]).copy()
     annual_frame["year"] = annual_frame["year"].astype(int)
 
     monthly_frame = annual_frame[["year", *MONTH_COLUMNS]].copy()
@@ -111,7 +113,9 @@ def load_nasa_gistemp_zonal_means() -> pd.DataFrame | None:
     except Exception:
         return None
 
-    frame = frame.rename(columns={"Year": "year"}).dropna(subset=["year"])
+    frame = frame.rename(columns={"Year": "year"})
+    frame["year"] = pd.to_numeric(frame["year"], errors="coerce")
+    frame = frame.dropna(subset=["year"]).copy()
     frame["year"] = frame["year"].astype(int)
     frame["time"] = pd.to_datetime(frame["year"].astype(str) + "-01-01")
     return frame.sort_values("time").reset_index(drop=True)

@@ -68,10 +68,23 @@ def main() -> None:
     )
 
     dataset, label = get_active_dataset()
-    real_temp, temp_source = get_real_temperature_array(to_display_array(dataset["t2m"], "t2m"))
-    global_monthly, global_annual, global_source = get_real_global_temperature_frames()
-    zonal_frame = load_nasa_gistemp_zonal_means()
-    eonet_events = load_nasa_eonet_events()
+    try:
+        real_temp, temp_source = get_real_temperature_array(to_display_array(dataset["t2m"], "t2m"))
+    except Exception:
+        real_temp = to_display_array(dataset["t2m"], "t2m")
+        temp_source = label
+    try:
+        global_monthly, global_annual, global_source = get_real_global_temperature_frames()
+    except Exception:
+        global_monthly, global_annual, global_source = None, None, label
+    try:
+        zonal_frame = load_nasa_gistemp_zonal_means()
+    except Exception:
+        zonal_frame = None
+    try:
+        eonet_events = load_nasa_eonet_events()
+    except Exception:
+        eonet_events = pd.DataFrame(columns=["title", "category", "lat", "lon", "date"])
     scene_index = st.session_state.get("atlas_story_scene_index", 0)
 
     control_cols = st.columns((1, 1, 1, 1, 3))
@@ -110,7 +123,14 @@ def main() -> None:
     data_array = real_temp if step["variable"] == "t2m" else to_display_array(dataset[step["variable"]], step["variable"])
     axes = detect_axes(data_array)
     start_date, end_date = step["year_range"]
-    base_slice = period_mean(data_array, axes, pd.Timestamp(start_date), pd.Timestamp(end_date), step["region"])
+    try:
+        base_slice = period_mean(data_array, axes, pd.Timestamp(start_date), pd.Timestamp(end_date), step["region"])
+    except Exception:
+        fallback_array = to_display_array(dataset["t2m"], "t2m") if step["variable"] == "t2m" else to_display_array(dataset[step["variable"]], step["variable"])
+        fallback_axes = detect_axes(fallback_array)
+        data_array = fallback_array
+        axes = fallback_axes
+        base_slice = period_mean(data_array, axes, pd.Timestamp(start_date), pd.Timestamp(end_date), step["region"])
     colorbar_title = str(data_array.attrs.get("units", step["variable"]))
 
     left_col, right_col = st.columns((0.42, 0.58))
@@ -151,7 +171,7 @@ def main() -> None:
                 use_container_width=True,
             )
         elif step["visual_component"] == "line_chart":
-            if global_annual is not None:
+            if global_annual is not None and not global_annual.empty:
                 series_df = global_annual.rename(columns={"anomaly": "value"})[["time", "value"]].copy()
                 trend_df = series_df.rename(columns={"value": "trend"})
             else:
@@ -195,7 +215,7 @@ def main() -> None:
                 default="medium_emissions",
                 format_func=lambda value: value.replace("_", " ").title(),
             )
-            if global_annual is not None:
+            if global_annual is not None and not global_annual.empty:
                 observed_df = global_annual.rename(columns={"anomaly": "value"})[["time", "value"]].copy()
                 scenario_series = build_projection_scenarios(observed_df, "value")
                 forecast_df = scenario_series[scenario_name].rename(columns={"value": "forecast"})
