@@ -35,6 +35,26 @@ def _request_bytes(url: str, timeout: int = 90) -> bytes:
     return response.content
 
 
+def _read_nasa_table_csv(csv_text: str, required_first_column: str = "Year") -> pd.DataFrame:
+    lines = [line for line in csv_text.splitlines() if line.strip()]
+    header_index = None
+    for index, line in enumerate(lines):
+        first_cell = line.split(",", 1)[0].strip().strip('"')
+        if first_cell == required_first_column:
+            header_index = index
+            break
+
+    if header_index is None:
+        raise ValueError(f"Could not find {required_first_column!r} header in NASA table response")
+
+    table_text = "\n".join(lines[header_index:])
+    frame = pd.read_csv(io.StringIO(table_text), na_values=["***", "999.00", "999.0", "999"])
+    first_column = str(frame.columns[0]).strip().strip('"')
+    if first_column != required_first_column:
+        frame = frame.rename(columns={frame.columns[0]: required_first_column})
+    return frame
+
+
 def _extract_point(geometry: dict[str, Any]) -> tuple[float | None, float | None]:
     if not geometry:
         return None, None
@@ -84,7 +104,7 @@ def load_nasa_gistemp_gridded() -> xr.DataArray | None:
 def load_nasa_gistemp_global_means() -> dict[str, pd.DataFrame] | None:
     try:
         csv_text = _request_text(NASA_GISTEMP_GLOBAL_CSV_URL)
-        annual_frame = pd.read_csv(io.StringIO(csv_text), skiprows=1, na_values="***")
+        annual_frame = _read_nasa_table_csv(csv_text)
     except Exception:
         return None
 
@@ -109,7 +129,7 @@ def load_nasa_gistemp_global_means() -> dict[str, pd.DataFrame] | None:
 def load_nasa_gistemp_zonal_means() -> pd.DataFrame | None:
     try:
         csv_text = _request_text(NASA_GISTEMP_ZONAL_CSV_URL)
-        frame = pd.read_csv(io.StringIO(csv_text), skiprows=1, na_values="***")
+        frame = _read_nasa_table_csv(csv_text)
     except Exception:
         return None
 

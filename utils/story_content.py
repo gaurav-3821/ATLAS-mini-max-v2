@@ -7,44 +7,19 @@ STORY_MODE_CONFIG = {
         "global_temperature": {
             "source": "NASA GISTEMP",
             "type": "timeseries",
-            "years": [1900, 1920, 1940, 1960, 1980, 2000, 2010, 2020, 2023],
-            "temperature_anomaly_c": [-0.12, -0.08, -0.02, 0.01, 0.18, 0.42, 0.63, 0.85, 1.02],
+            "description": "NASA GISS global land-ocean temperature index",
         },
         "arctic_amplification": {
-            "source": "NASA Arctic temperature anomaly",
-            "regions": ["Global", "Arctic"],
-            "anomaly_c": {
-                "Global": [0.1, 0.2, 0.35, 0.5, 0.7, 1.0],
-                "Arctic": [0.3, 0.6, 1.0, 1.6, 2.1, 2.8],
-            },
-            "years": [1970, 1980, 1990, 2000, 2010, 2023],
+            "source": "NASA GISTEMP zonal annual anomalies",
+            "description": "Global mean compared with the Arctic 64N-90N band",
         },
         "extreme_events": {
-            "source": "NOAA severe weather dataset",
-            "events": [
-                {"year": 1980, "events": 120},
-                {"year": 1990, "events": 180},
-                {"year": 2000, "events": 260},
-                {"year": 2010, "events": 420},
-                {"year": 2020, "events": 610},
-            ],
+            "source": "NOAA NCEI U.S. Billion-Dollar Weather and Climate Disasters",
+            "description": "Decadal annual averages plus current-decade average through 2024",
         },
         "future_projection": {
             "source": "IPCC CMIP6 projections",
-            "scenarios": {
-                "low_emissions": {
-                    "years": [2020, 2040, 2060, 2080, 2100],
-                    "warming_c": [1.2, 1.4, 1.6, 1.7, 1.8],
-                },
-                "medium_emissions": {
-                    "years": [2020, 2040, 2060, 2080, 2100],
-                    "warming_c": [1.2, 1.8, 2.4, 2.9, 3.2],
-                },
-                "high_emissions": {
-                    "years": [2020, 2040, 2060, 2080, 2100],
-                    "warming_c": [1.2, 2.3, 3.4, 4.3, 5.1],
-                },
-            },
+            "description": "Illustrative AR6 scenario warming levels relative to 1850-1900",
         },
     },
     "story_steps": [
@@ -58,8 +33,8 @@ STORY_MODE_CONFIG = {
             },
             "narrative_panel": {
                 "location": "below_visual_panel",
-                "text": "Global temperatures have increased dramatically over the past century. The warming signal now appears in nearly every basin and continent.",
-                "ai_insight": "Recent decades contain the warmest years in the instrument record.",
+                "text": "Global temperatures have increased markedly over the past century, with the strongest rise concentrated in recent decades.",
+                "ai_insight": "NASA GISTEMP now shows 2024 at about +1.28 deg C above the late-19th-century baseline, above 2023 and far above early 20th-century values.",
             },
         },
         {
@@ -72,8 +47,8 @@ STORY_MODE_CONFIG = {
             },
             "narrative_panel": {
                 "location": "below_visual_panel",
-                "text": "Polar regions warm faster than the global average due to feedback mechanisms such as sea-ice loss.",
-                "ai_insight": "Arctic temperatures rise several times faster than the global mean.",
+                "text": "Polar regions warm faster than the global average because sea-ice loss, snow feedbacks, and circulation changes amplify the signal.",
+                "ai_insight": "The Arctic anomaly in NASA's zonal record is several times larger than the global mean in recent decades.",
             },
         },
         {
@@ -100,8 +75,8 @@ STORY_MODE_CONFIG = {
             },
             "narrative_panel": {
                 "location": "below_visual_panel",
-                "text": "The frequency of heatwaves, storms, and extreme weather events has increased globally.",
-                "ai_insight": "Operational climate risk is no longer episodic. It is now persistent across decades.",
+                "text": "NOAA's U.S. billion-dollar disaster record shows a strong increase in costly extreme events compared with the 1980s baseline.",
+                "ai_insight": "This is a U.S.-specific indicator, not a global event count, so the chart now labels that scope clearly.",
             },
         },
         {
@@ -114,8 +89,8 @@ STORY_MODE_CONFIG = {
             },
             "narrative_panel": {
                 "location": "below_visual_panel",
-                "text": "Climate models simulate potential warming depending on emissions scenarios.",
-                "ai_insight": "Emissions choices made this decade strongly shape late-century warming outcomes.",
+                "text": "IPCC AR6 scenarios show that late-century warming depends strongly on future emissions choices.",
+                "ai_insight": "Lower-emissions pathways flatten the curve near the upper-1-degree range, while higher-emissions pathways continue toward multi-degree warming by 2100.",
             },
         },
     ],
