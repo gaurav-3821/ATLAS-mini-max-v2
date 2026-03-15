@@ -8,7 +8,7 @@ def main() -> None:
     failed = False
     for item in results:
         print(f"{item['name']}: {item['status']} - {item['detail']}")
-        if item["status"] == "Fail":
+        if item["status"] in {"Fail", "API key missing or invalid"}:
             failed = True
 
     if failed:

@@ -305,13 +305,13 @@ def get_source_status() -> list[dict[str, str]]:
     return [
         {
             "name": "OpenWeather",
-            "status": "Configured" if get_openweather_api_key() else "Demo fallback",
-            "detail": "Current weather, five-day forecast, and air-quality intelligence with automatic demo fallback.",
+            "status": "Connected" if get_openweather_api_key() else "API key missing or invalid",
+            "detail": "Server-side weather, forecast, and AQI integration for the dashboard and live diagnostics panel.",
         },
         {
             "name": "NOAA Climate Data Online",
-            "status": "Configured" if get_noaa_api_token() else "Demo fallback",
-            "detail": "Station search and recent daily summaries with demo fallback for reliable pages.",
+            "status": "Connected" if get_noaa_api_token() else "API key missing or invalid",
+            "detail": "Server-side historical climate integration for station lookup and recent observed data.",
         },
         {
             "name": "NASA GIBS",
@@ -366,7 +366,7 @@ def run_live_diagnostics() -> list[dict[str, str]]:
             results.append(
                 _status_result(
                     "OpenWeather",
-                    "Pass",
+                    "Connected",
                     (
                         f"{DIAGNOSTIC_LOCATION['label']} resolved with current weather, {len(forecast)} forecast rows, "
                         f"and AQI {air_current['aqi']} plus {len(air_forecast)} AQI forecast rows."
@@ -374,9 +374,9 @@ def run_live_diagnostics() -> list[dict[str, str]]:
                 )
             )
         except Exception as exc:
-            results.append(_status_result("OpenWeather", "Fail", str(exc)))
+            results.append(_status_result("OpenWeather", "API key missing or invalid", str(exc)))
     else:
-        results.append(_status_result("OpenWeather", "Skipped", "No server-side API key is configured."))
+        results.append(_status_result("OpenWeather", "API key missing or invalid", "No server-side API key is configured."))
 
     if get_noaa_api_token():
         try:
@@ -390,14 +390,14 @@ def run_live_diagnostics() -> list[dict[str, str]]:
             results.append(
                 _status_result(
                     "NOAA Climate Data Online",
-                    "Pass",
+                    "Connected",
                     f"Nearest station {station['name']} returned {len(history)} daily records.",
                 )
             )
         except Exception as exc:
-            results.append(_status_result("NOAA Climate Data Online", "Fail", str(exc)))
+            results.append(_status_result("NOAA Climate Data Online", "API key missing or invalid", str(exc)))
     else:
-        results.append(_status_result("NOAA Climate Data Online", "Skipped", "No server-side API token is configured."))
+        results.append(_status_result("NOAA Climate Data Online", "API key missing or invalid", "No server-side API token is configured."))
 
     try:
         snapshot, meta = fetch_satellite_snapshot(
