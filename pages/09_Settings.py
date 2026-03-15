@@ -6,11 +6,15 @@ from utils.live_data import (
     NASA_SESSION_KEY,
     NOAA_SESSION_KEY,
     OPENWEATHER_SESSION_KEY,
+    get_nasa_earthdata_token,
     get_deferred_integrations,
+    get_openweather_api_key,
+    get_noaa_api_token,
     get_source_status,
     run_live_diagnostics,
     runtime_credential_entry_enabled,
 )
+from utils.ai_copilot import get_openrouter_api_key
 from utils.style import render_app_shell, render_feature_card, render_info_banner, render_page_hero, render_section_intro, render_source_card
 
 
@@ -85,6 +89,8 @@ def main() -> None:
     )
     for item in get_deferred_integrations():
         render_feature_card(item["name"], item["detail"])
+    render_feature_card("OpenRouter", "Configured" if get_openrouter_api_key() else "Not configured")
+    render_feature_card("NASA Earthdata token", "Configured" if get_nasa_earthdata_token() else "Not configured")
 
     render_section_intro(
         "Deployment secrets",
@@ -96,7 +102,9 @@ def main() -> None:
             [
                 "OPENWEATHER_API_KEY=<your key>",
                 "NOAA_API_TOKEN=<your token>",
-                "ATLAS_DEFAULT_LOCATION=New Delhi, IN",
+                "NASA_EARTHDATA_TOKEN=<your token>",
+                "OPENROUTER_API_KEY=<your key>",
+                "ATLAS_DEFAULT_LOCATION=Delhi, IN",
                 "ATLAS_ENABLE_RUNTIME_CREDENTIAL_INPUTS=false",
             ]
         ),

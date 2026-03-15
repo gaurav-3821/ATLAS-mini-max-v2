@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from utils.ai_copilot import generate_prediction_brief, get_openrouter_api_key
 from utils.chart_factory import (
     create_anomaly_bar_figure,
     create_forecast_delta_figure,
@@ -60,6 +61,16 @@ def main() -> None:
     render_info_banner(
         f"Parsed query -> variable: {variable}, region: {region_name}, anomaly mode: {anomaly_mode}. Source: {label}."
     )
+
+    if get_openrouter_api_key():
+        with st.spinner("Generating AI climate brief..."):
+            try:
+                ai_brief = generate_prediction_brief(user_query, region_name, variable, observed_df.tail(120), forecast_df)
+            except Exception as exc:
+                ai_brief = f"AI briefing unavailable: {exc}"
+        render_feature_card("ATLAS Copilot", ai_brief)
+    else:
+        render_feature_card("ATLAS Copilot", "Add an OpenRouter API key in server-side secrets to enable a live AI forecast summary.")
 
     metric_cols = st.columns(4)
     with metric_cols[0]:
