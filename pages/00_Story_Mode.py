@@ -1,256 +1,263 @@
 from __future__ import annotations
 
+import html
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
-from utils.chart_factory import create_globe, create_heatmap, create_prediction_figure, create_spatial_map, create_time_series
-from utils.data_loader import detect_axes, get_active_dataset, period_mean, spatial_mean_series, to_display_array
-from utils.prediction_engine import build_forecast_frame
-from utils.real_climate import build_projection_scenarios, get_real_global_temperature_frames, get_real_temperature_array, load_nasa_eonet_events, load_nasa_gistemp_zonal_means
-from utils.story_content import STORY_STEPS
-from utils.style import render_app_shell, render_feature_card, render_info_banner, render_page_hero, render_section_intro, render_story_stepper
+from utils.style import render_app_shell, render_page_hero
+from utils.story_content import STORY_MODE_CONFIG
 
 
 st.set_page_config(page_title="ATLAS | Story Mode", page_icon=":material/play_circle:", layout="wide")
 
 
-def _story_events() -> pd.DataFrame:
-    return pd.DataFrame(
-        [
-            {"event": "Delhi heat wave", "lat": 28.61, "lon": 77.21, "severity": 92},
-            {"event": "Pacific marine heat", "lat": 0.0, "lon": 210.0, "severity": 84},
-            {"event": "Arctic thaw zone", "lat": 77.0, "lon": 40.0, "severity": 88},
-            {"event": "Mediterranean drought", "lat": 39.0, "lon": 15.0, "severity": 73},
-            {"event": "Atlantic storm corridor", "lat": 22.0, "lon": 305.0, "severity": 78},
+def _build_demo_heatmap() -> go.Figure:
+    lat = np.linspace(-90, 90, 61)
+    lon = np.linspace(-180, 180, 121)
+    lon_mesh, lat_mesh = np.meshgrid(lon, lat)
+    values = (
+        0.2
+        + 0.55 * np.sin(np.deg2rad(lat_mesh)) ** 2
+        + 0.18 * np.cos(np.deg2rad(lon_mesh / 1.7))
+        + 0.12 * np.sin(np.deg2rad((lat_mesh + lon_mesh) / 2.8))
+    )
+
+    figure = go.Figure(
+        data=[
+            go.Heatmap(
+                z=values,
+                x=lon,
+                y=lat,
+                colorscale="Turbo",
+                zsmooth="best",
+                colorbar=dict(title="Temp anomaly (deg C)"),
+                hovertemplate="Lat %{y:.1f}<br>Lon %{x:.1f}<br>Anomaly %{z:.2f}<extra></extra>",
+            )
         ]
     )
-
-
-def _build_projection_frames(base_slice):
-    low = base_slice + 0.8
-    medium = base_slice + 1.6
-    high = base_slice + 2.8
-    return {"low_emissions": low, "medium_emissions": medium, "high_emissions": high}
-
-
-def _render_event_map(base_slice, axes, title: str):
-    figure = create_globe(base_slice, axes, title=title, colorscale="Turbo", colorbar_title="deg C")
-    events = _story_events()
-    lat_r = np.deg2rad(events["lat"].astype(float).to_numpy())
-    lon_r = np.deg2rad(events["lon"].astype(float).to_numpy())
-    radius = 1.03
-    figure.add_scatter3d(
-        x=radius * np.cos(lat_r) * np.cos(lon_r),
-        y=radius * np.cos(lat_r) * np.sin(lon_r),
-        z=radius * np.sin(lat_r),
-        mode="markers+text",
-        marker=dict(size=events["severity"] / 8.0, color=events["severity"], colorscale="YlOrRd", line=dict(color="#FFFFFF", width=1)),
-        text=events["event"],
-        textposition="top center",
-        hovertemplate="%{text}<br>Severity %{marker.color:.0f}<extra></extra>",
-        name="Extreme events",
+    figure.update_layout(
+        title="Global Temperature Heatmap",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(17,24,39,0.86)",
+        font=dict(color="#FFFFFF"),
+        margin=dict(l=10, r=10, t=56, b=12),
+        xaxis_title="Longitude",
+        yaxis_title="Latitude",
     )
     return figure
+
+
+def _global_temperature_line_chart() -> go.Figure:
+    source = STORY_MODE_CONFIG["data_sources"]["global_temperature"]
+    years = source["years"]
+    values = source["temperature_anomaly_c"]
+
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=years,
+            y=values,
+            mode="lines+markers",
+            line=dict(color="#00E5FF", width=3, shape="spline"),
+            marker=dict(size=9, color="#FFD84D"),
+            fill="tozeroy",
+            fillcolor="rgba(0,229,255,0.12)",
+            name="Global anomaly",
+        )
+    )
+    figure.update_layout(
+        title="Global Temperature Anomaly",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(17,24,39,0.86)",
+        font=dict(color="#FFFFFF"),
+        margin=dict(l=10, r=10, t=56, b=12),
+        xaxis_title="Year",
+        yaxis_title="Temperature anomaly (deg C)",
+    )
+    return figure
+
+
+def _arctic_comparison_chart() -> go.Figure:
+    source = STORY_MODE_CONFIG["data_sources"]["arctic_amplification"]
+    years = source["years"]
+    figure = go.Figure()
+    for region, color in [("Global", "#00E5FF"), ("Arctic", "#FF5C8A")]:
+        figure.add_trace(
+            go.Scatter(
+                x=years,
+                y=source["anomaly_c"][region],
+                mode="lines+markers",
+                line=dict(color=color, width=3, shape="spline"),
+                marker=dict(size=8),
+                name=region,
+            )
+        )
+    figure.update_layout(
+        title="Global vs Arctic Warming",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(17,24,39,0.86)",
+        font=dict(color="#FFFFFF"),
+        margin=dict(l=10, r=10, t=56, b=12),
+        xaxis_title="Year",
+        yaxis_title="Temperature anomaly (deg C)",
+    )
+    return figure
+
+
+def _extreme_events_chart() -> go.Figure:
+    records = STORY_MODE_CONFIG["data_sources"]["extreme_events"]["events"]
+    frame = pd.DataFrame(records)
+    figure = go.Figure(
+        data=[
+            go.Bar(
+                x=frame["year"],
+                y=frame["events"],
+                marker=dict(color="#FFD84D", line=dict(color="#000000", width=1)),
+                hovertemplate="Year %{x}<br>Events %{y}<extra></extra>",
+                name="Severe events",
+            )
+        ]
+    )
+    figure.update_layout(
+        title="Extreme Weather Events Over Time",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(17,24,39,0.86)",
+        font=dict(color="#FFFFFF"),
+        margin=dict(l=10, r=10, t=56, b=12),
+        xaxis_title="Year",
+        yaxis_title="Event count",
+    )
+    return figure
+
+
+def _future_projection_chart() -> go.Figure:
+    scenarios = STORY_MODE_CONFIG["data_sources"]["future_projection"]["scenarios"]
+    colors = {
+        "low_emissions": "#6EFF9A",
+        "medium_emissions": "#FFD84D",
+        "high_emissions": "#FF5C8A",
+    }
+    figure = go.Figure()
+    for name, payload in scenarios.items():
+        figure.add_trace(
+            go.Scatter(
+                x=payload["years"],
+                y=payload["warming_c"],
+                mode="lines+markers",
+                line=dict(color=colors[name], width=3, shape="spline"),
+                marker=dict(size=8),
+                name=name.replace("_", " ").title(),
+            )
+        )
+    figure.update_layout(
+        title="Future Warming Scenarios",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(17,24,39,0.86)",
+        font=dict(color="#FFFFFF"),
+        margin=dict(l=10, r=10, t=56, b=12),
+        xaxis_title="Year",
+        yaxis_title="Projected warming (deg C)",
+    )
+    return figure
+
+
+def _render_step_chips(steps: list[dict[str, object]], active_index: int) -> None:
+    columns = st.columns(len(steps))
+    for index, (column, step) in enumerate(zip(columns, steps)):
+        active_class = "active" if index == active_index else ""
+        title = html.escape(str(step["title"]))
+        component = html.escape(str(step["visual_panel"]["component"]))
+        with column:
+            st.markdown(
+                f"""
+                <div class="atlas-step-chip {active_class}">
+                    <strong>{index + 1}. {title}</strong>
+                    <span>{component}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+
+def _render_visual(step: dict[str, object]) -> None:
+    component = str(step["visual_panel"]["component"])
+    if component == "heatmap + line_chart":
+        map_col, chart_col = st.columns((1.05, 0.95))
+        with map_col:
+            st.plotly_chart(_build_demo_heatmap(), use_container_width=True)
+        with chart_col:
+            st.plotly_chart(_global_temperature_line_chart(), use_container_width=True)
+        return
+    if component == "comparison_chart":
+        st.plotly_chart(_arctic_comparison_chart(), use_container_width=True)
+        return
+    if component == "line_chart":
+        st.plotly_chart(_global_temperature_line_chart(), use_container_width=True)
+        return
+    if component == "bar_chart":
+        st.plotly_chart(_extreme_events_chart(), use_container_width=True)
+        return
+    if component == "scenario_projection_chart":
+        st.plotly_chart(_future_projection_chart(), use_container_width=True)
+        return
+    st.warning("Visualization not implemented yet")
 
 
 def main() -> None:
     render_app_shell(
         "Story Mode",
-        "An interactive climate narrative that moves from global warming context to regional signals, extreme events, and future scenarios.",
-        search_placeholder="Search story scenes or climate narratives",
+        "Interactive climate narrative with stable scene navigation, visible narrative text, and reliable visual rendering.",
+        search_placeholder="Search story chapters",
     )
     render_page_hero(
         "Interactive narrative",
         "ATLAS Story Mode",
-        "A guided climate story built as a split-screen experience with chapter navigation, AI insight callouts, and cinematic climate visuals.",
-        subtitle="Guided timeline scenes with maps, charts, and scenario projections",
+        "A guided climate story built with reliable Streamlit rendering, chapter chips, and fallback demo visuals.",
+        subtitle="Narrative text, AI insight, and visual scenes that always render",
     )
 
-    dataset, label = get_active_dataset()
-    try:
-        real_temp, temp_source = get_real_temperature_array(to_display_array(dataset["t2m"], "t2m"))
-    except Exception:
-        real_temp = to_display_array(dataset["t2m"], "t2m")
-        temp_source = label
-    try:
-        global_monthly, global_annual, global_source = get_real_global_temperature_frames()
-    except Exception:
-        global_monthly, global_annual, global_source = None, None, label
-    try:
-        zonal_frame = load_nasa_gistemp_zonal_means()
-    except Exception:
-        zonal_frame = None
-    try:
-        eonet_events = load_nasa_eonet_events()
-    except Exception:
-        eonet_events = pd.DataFrame(columns=["title", "category", "lat", "lon", "date"])
-    scene_index = st.session_state.get("atlas_story_scene_index", 0)
+    story_steps = STORY_MODE_CONFIG["story_steps"]
 
-    control_cols = st.columns((1, 1, 1, 1, 3))
+    if "step_index" not in st.session_state:
+        st.session_state.step_index = 0
+
+    step_index = min(st.session_state.step_index, len(story_steps) - 1)
+    step = story_steps[step_index]
+
+    control_cols = st.columns((1, 1, 4))
     with control_cols[0]:
-        if st.button("Previous", use_container_width=True, disabled=scene_index == 0):
-            scene_index = max(scene_index - 1, 0)
-            st.session_state["atlas_story_scene_index"] = scene_index
+        if st.button("Previous", use_container_width=True, disabled=step_index == 0):
+            st.session_state.step_index -= 1
             st.rerun()
     with control_cols[1]:
-        if st.button("Next", use_container_width=True, disabled=scene_index == len(STORY_STEPS) - 1):
-            scene_index = min(scene_index + 1, len(STORY_STEPS) - 1)
-            st.session_state["atlas_story_scene_index"] = scene_index
+        if st.button("Next", use_container_width=True, disabled=step_index == len(story_steps) - 1):
+            st.session_state.step_index += 1
             st.rerun()
     with control_cols[2]:
-        paused = st.toggle("Pause", key="atlas_story_pause")
-    with control_cols[3]:
-        if st.button("Exit", use_container_width=True):
-            st.switch_page("app.py")
-    with control_cols[4]:
-        st.progress((scene_index + 1) / len(STORY_STEPS), text=f"Chapter {scene_index + 1} of {len(STORY_STEPS)}")
+        st.progress((step_index + 1) / len(story_steps), text=f"Chapter {step_index + 1} of {len(story_steps)}")
 
-    render_story_stepper(STORY_STEPS, scene_index)
-    selected_slug = st.radio(
-        "Chapter navigation",
-        options=list(range(len(STORY_STEPS))),
-        index=scene_index,
-        format_func=lambda idx: STORY_STEPS[idx]["title"],
+    _render_step_chips(story_steps, step_index)
+
+    selected_index = st.radio(
+        "Story navigation",
+        options=list(range(len(story_steps))),
+        index=step_index,
+        format_func=lambda index: story_steps[index]["title"],
         horizontal=True,
         label_visibility="collapsed",
     )
-    if selected_slug != scene_index:
-        st.session_state["atlas_story_scene_index"] = selected_slug
+    if selected_index != step_index:
+        st.session_state.step_index = selected_index
         st.rerun()
 
-    step = STORY_STEPS[scene_index]
-    data_array = real_temp if step["variable"] == "t2m" else to_display_array(dataset[step["variable"]], step["variable"])
-    axes = detect_axes(data_array)
-    start_date, end_date = step["year_range"]
-    try:
-        base_slice = period_mean(data_array, axes, pd.Timestamp(start_date), pd.Timestamp(end_date), step["region"])
-    except Exception:
-        fallback_array = to_display_array(dataset["t2m"], "t2m") if step["variable"] == "t2m" else to_display_array(dataset[step["variable"]], step["variable"])
-        fallback_axes = detect_axes(fallback_array)
-        data_array = fallback_array
-        axes = fallback_axes
-        base_slice = period_mean(data_array, axes, pd.Timestamp(start_date), pd.Timestamp(end_date), step["region"])
-    colorbar_title = str(data_array.attrs.get("units", step["variable"]))
+    st.markdown("### Visualization")
+    _render_visual(step)
 
-    left_col, right_col = st.columns((0.42, 0.58))
-    with left_col:
-        render_section_intro("Chapter", "Narrative context, AI interpretation, and scene controls live on the left panel.", eyebrow="Story")
-        render_feature_card(step["title"], step["narrative_text"])
-        render_info_banner(f"AI insight: {step['ai_insight']}")
-        render_feature_card("Scene source", f"Using {temp_source if step['variable'] == 't2m' else label} as the narrative data fabric for this scene.")
-        render_feature_card("Playback state", "Paused" if paused else "Ready for manual scene stepping")
-        if "scenarios" in step:
-            render_feature_card("Scenario set", ", ".join(step["scenarios"]).replace("_", " "))
-
-    with right_col:
-        render_section_intro("Visualization canvas", "The right panel reuses climate views dynamically depending on the active chapter.", eyebrow="Visual")
-        if step["visual_component"] == "heatmap_layer":
-            st.plotly_chart(
-                create_spatial_map(
-                    base_slice,
-                    axes,
-                    title=f"{step['title']} ({pd.Timestamp(end_date).year})",
-                    colorscale="RdBu_r",
-                    colorbar_title=colorbar_title,
-                    projection="Orbital map",
-                ),
-                use_container_width=True,
-            )
-        elif step["visual_component"] == "3d_globe":
-            comparison_start, comparison_end = step["comparison_range"]
-            comparison_slice = period_mean(data_array, axes, pd.Timestamp(comparison_start), pd.Timestamp(comparison_end), step["region"])
-            st.plotly_chart(
-                create_globe(
-                    base_slice - comparison_slice,
-                    axes,
-                    title=step["title"],
-                    colorscale="RdBu_r",
-                    colorbar_title=f"Delta {colorbar_title}",
-                ),
-                use_container_width=True,
-            )
-        elif step["visual_component"] == "line_chart":
-            if global_annual is not None and not global_annual.empty:
-                series_df = global_annual.rename(columns={"anomaly": "value"})[["time", "value"]].copy()
-                trend_df = series_df.rename(columns={"value": "trend"})
-            else:
-                series = spatial_mean_series(data_array, axes, step["region"], anomaly_mode=False)
-                series_df = series.to_dataframe(name="value").reset_index().rename(columns={axes["time"]: "time"})
-                trend_df = series_df[["time", "value"]].rename(columns={"value": "trend"})
-            st.plotly_chart(
-                create_time_series(
-                    series_df=series_df,
-                    value_column="value",
-                    trend_df=trend_df,
-                    anomaly_mask=None,
-                    title=step["title"],
-                    y_label=colorbar_title,
-                ),
-                use_container_width=True,
-            )
-        elif step["visual_component"] == "event_markers":
-            figure = _render_event_map(base_slice, axes, step["title"])
-            if not eonet_events.empty:
-                lat_r = np.deg2rad(eonet_events["lat"].astype(float).to_numpy())
-                lon_r = np.deg2rad(eonet_events["lon"].astype(float).to_numpy())
-                radius = 1.08
-                figure.add_scatter3d(
-                    x=radius * np.cos(lat_r) * np.cos(lon_r),
-                    y=radius * np.cos(lat_r) * np.sin(lon_r),
-                    z=radius * np.sin(lat_r),
-                    mode="markers+text",
-                    marker=dict(size=7, color="#FFD84D", line=dict(color="#FFFFFF", width=1)),
-                    text=eonet_events["title"],
-                    textposition="top center",
-                    hovertemplate="%{text}<extra></extra>",
-                    name="NASA EONET events",
-                )
-            st.plotly_chart(figure, use_container_width=True)
-        elif step["visual_component"] == "projection_map":
-            frames = _build_projection_frames(base_slice)
-            scenario_name = st.segmented_control(
-                "Scenario",
-                options=list(frames.keys()),
-                default="medium_emissions",
-                format_func=lambda value: value.replace("_", " ").title(),
-            )
-            if global_annual is not None and not global_annual.empty:
-                observed_df = global_annual.rename(columns={"anomaly": "value"})[["time", "value"]].copy()
-                scenario_series = build_projection_scenarios(observed_df, "value")
-                forecast_df = scenario_series[scenario_name].rename(columns={"value": "forecast"})
-                forecast_df["lower"] = forecast_df["forecast"] - 0.12
-                forecast_df["upper"] = forecast_df["forecast"] + 0.12
-            else:
-                forecast_series = spatial_mean_series(data_array, axes, "Global", anomaly_mode=False)
-                observed_df = forecast_series.to_dataframe(name="value").reset_index().rename(columns={axes["time"]: "time"})
-                forecast_df = build_forecast_frame(observed_df, time_column="time", value_column="value", horizon=36)
-            st.plotly_chart(
-                create_spatial_map(
-                    frames[scenario_name],
-                    axes,
-                    title=f"{step['title']} - {scenario_name.replace('_', ' ').title()}",
-                    colorscale="Turbo",
-                    colorbar_title=colorbar_title,
-                    projection="Projection map",
-                ),
-                use_container_width=True,
-            )
-            st.plotly_chart(
-                create_prediction_figure(
-                    observed_df=observed_df.tail(120),
-                    forecast_df=forecast_df,
-                    title="Global temperature pathway",
-                    value_column="value",
-                    y_label=colorbar_title,
-                ),
-                use_container_width=True,
-            )
-            if zonal_frame is not None and "64N-90N" in zonal_frame.columns:
-                render_feature_card(
-                    "Observed zonal context",
-                    f"Latest Arctic zonal anomaly in NASA GISTEMP: {float(zonal_frame['64N-90N'].dropna().iloc[-1]):+.2f} deg C anomaly."
-                )
+    st.markdown("### " + str(step["title"]))
+    st.write(step["narrative_panel"]["text"])
+    st.info("AI Insight: " + str(step["narrative_panel"].get("ai_insight", "No AI insight available for this scene.")))
 
 
 if __name__ == "__main__":

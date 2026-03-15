@@ -47,6 +47,27 @@ def get_openrouter_model() -> str:
     return _secret_value(OPENROUTER_MODEL_NAMES) or "openrouter/auto"
 
 
+def _extract_message_text(choice: dict[str, Any]) -> str:
+    message = choice.get("message", {})
+    content = message.get("content")
+    if isinstance(content, str) and content.strip():
+        return content.strip()
+    if isinstance(content, list):
+        text_parts: list[str] = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text" and item.get("text"):
+                text_parts.append(str(item["text"]).strip())
+        if text_parts:
+            return "\n".join(part for part in text_parts if part)
+    text = choice.get("text")
+    if isinstance(text, str) and text.strip():
+        return text.strip()
+    reasoning = message.get("reasoning")
+    if isinstance(reasoning, str) and reasoning.strip():
+        return reasoning.strip()
+    return ""
+
+
 def _frame_snapshot(frame: pd.DataFrame, value_column: str) -> str:
     if frame.empty:
         return "No data available."
@@ -116,8 +137,7 @@ def generate_prediction_brief(
     choices = data.get("choices") or []
     if not choices:
         raise RuntimeError("OpenRouter returned no choices.")
-    message = choices[0].get("message", {})
-    content = message.get("content")
-    if not content:
-        raise RuntimeError("OpenRouter returned an empty response.")
-    return str(content).strip()
+    content = _extract_message_text(choices[0])
+    if content:
+        return content
+    return "AI briefing is temporarily unavailable, but the forecast and live data layers are still active."
