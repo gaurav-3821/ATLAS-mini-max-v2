@@ -258,6 +258,43 @@ def _demo_noaa_history(lat: float, lon: float, days: int) -> dict[str, Any]:
     }
 
 
+@st.cache_data(show_spinner=False, ttl=21600)
+def _fetch_open_meteo_history(lat: float, lon: float, start_date_iso: str, end_date_iso: str) -> pd.DataFrame:
+    payload = _request_json(
+        "https://archive-api.open-meteo.com/v1/archive",
+        params={
+            "latitude": lat,
+            "longitude": lon,
+            "start_date": start_date_iso,
+            "end_date": end_date_iso,
+            "daily": [
+                "temperature_2m_mean",
+                "temperature_2m_max",
+                "temperature_2m_min",
+                "precipitation_sum",
+            ],
+            "temperature_unit": "celsius",
+            "precipitation_unit": "mm",
+            "timezone": "auto",
+        },
+        timeout=35,
+    )
+    daily = payload.get("daily", {})
+    times = daily.get("time", [])
+    if not times:
+        return pd.DataFrame(columns=["date", "TAVG", "TMAX", "TMIN", "PRCP"])
+    frame = pd.DataFrame(
+        {
+            "date": pd.to_datetime(times).tz_localize(None).normalize(),
+            "TAVG": pd.to_numeric(daily.get("temperature_2m_mean", []), errors="coerce"),
+            "TMAX": pd.to_numeric(daily.get("temperature_2m_max", []), errors="coerce"),
+            "TMIN": pd.to_numeric(daily.get("temperature_2m_min", []), errors="coerce"),
+            "PRCP": pd.to_numeric(daily.get("precipitation_sum", []), errors="coerce"),
+        }
+    )
+    return frame.sort_values("date").reset_index(drop=True)
+
+
 def _truthy(value: str | None) -> bool:
     if not value:
         return False
@@ -775,6 +812,36 @@ def fetch_noaa_station_history(
         except Exception:
             pass
     return _demo_noaa_history(lat, lon, days)
+
+
+def fetch_historical_climate_context(
+    lat: float,
+    lon: float,
+    *,
+    days: int = 45,
+) -> dict[str, Any]:
+    end_date = date.today() - timedelta(days=5)
+    start_date = end_date - timedelta(days=days - 1)
+    try:
+        history = _fetch_open_meteo_history(lat, lon, start_date.isoformat(), end_date.isoformat())
+        if not history.empty:
+            return {
+                "station": {
+                    "id": "OPEN-METEO-ARCHIVE",
+                    "name": "Open-Meteo ERA5 archive grid cell",
+                    "latitude": lat,
+                    "longitude": lon,
+                    "distance_km": 0.0,
+                },
+                "history": history,
+                "source": "Open-Meteo ERA5 archive",
+            }
+    except Exception:
+        pass
+
+    noaa_fallback = fetch_noaa_station_history(lat, lon, days=days)
+    noaa_fallback["source"] = "NOAA Climate Data Online" if noaa_fallback["station"]["id"] != "ATLAS-DEMO-001" else "ATLAS demo fallback"
+    return noaa_fallback
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:

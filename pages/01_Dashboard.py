@@ -15,12 +15,16 @@ from utils.chart_factory import (
     create_risk_timeline_figure,
     create_risk_radar,
     create_station_history_figure,
-    create_timeline_figure,
 )
-from utils.data_loader import detect_axes, get_active_dataset, spatial_mean_series, to_display_array
-from utils.live_data import fetch_air_quality, fetch_forecast, fetch_noaa_station_history, fetch_current_weather, get_default_location_query, resolve_location
+from utils.live_data import (
+    fetch_air_quality,
+    fetch_forecast,
+    fetch_historical_climate_context,
+    fetch_current_weather,
+    get_default_location_query,
+    resolve_location,
+)
 from utils.risk_engine import build_risk_profile, build_risk_timeline
-from utils.real_climate import get_real_global_temperature_frames
 from utils.style import render_app_shell, render_feature_card, render_info_banner, render_metric_card, render_page_hero, render_section_intro
 
 
@@ -45,29 +49,14 @@ def main() -> None:
         default_query = st.session_state.get("atlas_ops_location", "Delhi, IN")
         location_query = st.text_input("Tracked location", value=default_query)
         st.session_state["atlas_ops_location"] = location_query
-        history_days = st.slider("NOAA history window", min_value=14, max_value=90, value=45, step=1)
-
-    dataset, source_label = get_active_dataset()
-    data_array = to_display_array(dataset["t2m"], "t2m")
-    axes = detect_axes(data_array)
-    real_monthly, real_annual, real_source = get_real_global_temperature_frames()
-    if real_monthly is not None:
-        global_df = real_monthly.rename(columns={"anomaly": "temperature"})[["time", "temperature"]].copy()
-        source_label = real_source
-    else:
-        global_series = spatial_mean_series(data_array, axes, "Global", anomaly_mode=False)
-        global_df = global_series.to_dataframe(name="temperature").reset_index().rename(columns={axes["time"]: "time"})
-    recent_anomaly = float(global_df["temperature"].iloc[-1] - global_df["temperature"].tail(min(len(global_df), 120)).mean())
-    anomaly_baseline = float(global_df["temperature"].tail(min(len(global_df), 240)).mean())
-    anomaly_bars = global_df.tail(24).copy()
-    anomaly_bars["anomaly"] = anomaly_bars["temperature"] - anomaly_baseline
+        history_days = st.slider("History window", min_value=14, max_value=120, value=60, step=1)
 
     location = None
     weather = None
     forecast_df = pd.DataFrame()
     air_current = None
     air_forecast = pd.DataFrame()
-    noaa_result = None
+    climate_result = None
     live_error = None
 
     try:
@@ -76,17 +65,34 @@ def main() -> None:
         forecast_df = fetch_forecast(location["lat"], location["lon"])
         air_current, air_forecast = fetch_air_quality(location["lat"], location["lon"])
         try:
-            noaa_result = fetch_noaa_station_history(location["lat"], location["lon"], days=history_days)
+            climate_result = fetch_historical_climate_context(location["lat"], location["lon"], days=history_days)
         except Exception:
-            noaa_result = None
+            climate_result = None
     except Exception as exc:
         live_error = str(exc)
+
+    history_df = climate_result["history"] if climate_result else pd.DataFrame()
+    history_source = climate_result["source"] if climate_result else "No historical source"
+    current_temp = float(weather["temperature_c"]) if weather else 0.0
+    current_humidity = float(weather["humidity_pct"]) if weather else 0.0
+    current_wind = float(weather["wind_mps"]) if weather else 0.0
+    current_pressure = float(weather["pressure_hpa"]) if weather else 0.0
+    recent_mean = float(history_df["TAVG"].dropna().mean()) if not history_df.empty and "TAVG" in history_df else current_temp
+    recent_max = float(history_df["TMAX"].dropna().max()) if not history_df.empty and "TMAX" in history_df else current_temp
+    recent_min = float(history_df["TMIN"].dropna().min()) if not history_df.empty and "TMIN" in history_df else current_temp
+    recent_rain = float(history_df["PRCP"].fillna(0).tail(7).sum()) if not history_df.empty and "PRCP" in history_df else 0.0
+    heat_departure = current_temp - recent_mean
+
+    anomaly_bars = pd.DataFrame(columns=["time", "anomaly"])
+    if not history_df.empty and {"date", "TAVG"}.issubset(history_df.columns):
+        anomaly_bars = history_df[["date", "TAVG"]].copy().rename(columns={"date": "time"})
+        anomaly_bars["anomaly"] = anomaly_bars["TAVG"] - recent_mean
 
     risk_profile = build_risk_profile(
         weather or {"temperature_c": 0.0, "humidity_pct": 0.0, "wind_mps": 0.0, "pressure_hpa": 1013.0},
         forecast_df,
         air_current or {"aqi": 1, "pm2_5": 0.0},
-        noaa_result["history"] if noaa_result else None,
+        history_df if not history_df.empty else None,
     )
     risk_timeline = build_risk_timeline(forecast_df)
 
@@ -96,25 +102,22 @@ def main() -> None:
         )
     else:
         render_info_banner(
-            f"Tracking {location['label']} with live weather, AQI, and station context layered over the historical climate baseline from {source_label}."
+            f"Tracking {location['label']} with live OpenWeather signals and historical Delhi context from {history_source}."
         )
     render_feature_card("Operational target", f"Primary dashboard context is pinned to {location['label'] if location else 'Delhi, IN'} so the live and historical views point to the same place.")
 
     metric_cols = st.columns(5)
     with metric_cols[0]:
-        render_metric_card("Global temperature", f"{global_df['temperature'].iloc[-1]:.2f} deg C", f"Latest global anomaly from {source_label}")
+        render_metric_card("Delhi current temp", f"{current_temp:.1f} deg C", str(location["label"]) if location else "Delhi, IN")
     with metric_cols[1]:
-        if weather:
-            render_metric_card("Tracked city", f"{weather['temperature_c']:.1f} deg C", str(location["label"]))
-        else:
-            render_metric_card("Tracked city", "API ready", "Connect OpenWeather or use coordinates")
+        render_metric_card("Feels like humidity", f"{current_humidity:.0f}%", "Current relative humidity")
     with metric_cols[2]:
         if air_current:
             render_metric_card("Air quality", f"AQI {air_current['aqi']}", str(air_current["category"]))
         else:
             render_metric_card("Air quality", "API ready", "AQI becomes available with OpenWeather")
     with metric_cols[3]:
-        render_metric_card("Climate anomaly", f"{recent_anomaly:+.2f} deg C", "Relative to the trailing 10-year mean")
+        render_metric_card("Heat departure", f"{heat_departure:+.1f} deg C", f"Vs last {history_days} days mean")
     with metric_cols[4]:
         render_metric_card("Risk index", f"{risk_profile['composite']:.0f}/100", str(risk_profile["composite_label"]))
 
@@ -131,15 +134,7 @@ def main() -> None:
                 use_container_width=True,
             )
         else:
-            st.plotly_chart(
-                create_timeline_figure(
-                    global_df,
-                    title="Global activity timeline",
-                    value_column="temperature",
-                    y_label="Global mean temperature (deg C)",
-                ),
-                use_container_width=True,
-            )
+            st.info("Live forecast data is unavailable for the selected location.")
     with top_right:
         radar_tab, mix_tab = st.tabs(["Radar", "Mix"])
         with radar_tab:
@@ -186,21 +181,24 @@ def main() -> None:
                 use_container_width=True,
             )
         else:
-            st.plotly_chart(
-                create_anomaly_bar_figure(
-                    anomaly_bars[["time", "anomaly"]],
-                    title="Global anomaly bars",
-                    value_column="anomaly",
-                    y_label="Temperature anomaly (deg C)",
-                ),
-                use_container_width=True,
-            )
+            if not anomaly_bars.empty:
+                st.plotly_chart(
+                    create_anomaly_bar_figure(
+                        anomaly_bars[["time", "anomaly"]],
+                        title="Delhi daily mean departures",
+                        value_column="anomaly",
+                        y_label="Departure (deg C)",
+                    ),
+                    use_container_width=True,
+                )
+            else:
+                st.info("Historical departure bars are unavailable for the selected location.")
 
     alerts_col, forecast_col = st.columns((0.82, 1.18))
     with alerts_col:
         render_section_intro(
             "Extreme weather alerts",
-            "Risk panels synthesize live weather, forecast progression, station history, and AQI.",
+            "Risk panels synthesize live Delhi weather, forecast progression, historical city context, and AQI.",
             eyebrow="Alerts",
         )
         for title, panel in risk_profile["panels"].items():
@@ -246,18 +244,22 @@ def main() -> None:
 
     with lower_right:
         render_section_intro(
-            "Ground truth",
-            "Nearby NOAA station history helps ground the short-range dashboard in observed conditions.",
-            eyebrow="Station",
+            "Observed climate context",
+            "Historical daily temperature and rainfall now use a real Delhi-area archive before any fallback is considered.",
+            eyebrow="History",
         )
-        if noaa_result and not noaa_result["history"].empty:
-            station = noaa_result["station"]
+        if climate_result and not climate_result["history"].empty:
+            station = climate_result["station"]
+            render_feature_card(
+                "Historical source",
+                f"{history_source} centered near {station['latitude']:.2f}, {station['longitude']:.2f}. Recent max {recent_max:.1f} deg C, min {recent_min:.1f} deg C, rainfall last 7 days {recent_rain:.1f} mm.",
+            )
             st.plotly_chart(
-                create_station_history_figure(noaa_result["history"], title=f"{station['name']} recent history"),
+                create_station_history_figure(climate_result["history"], title=f"{station['name']} recent history"),
                 use_container_width=True,
             )
         else:
-            st.info("NOAA station data is unavailable or no daily summaries were returned for the selected window.")
+            st.info("Historical Delhi climate data is unavailable for the selected window.")
 
 
 if __name__ == "__main__":
