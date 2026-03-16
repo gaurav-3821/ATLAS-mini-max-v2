@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark_mode">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATLAS Climate Intelligence Platform</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Sidebar navigation">
+      <div class="brand-block">
+        <div class="brand-mark">ATLAS</div>
+        <p class="brand-copy">Climate Intelligence Platform</p>
+      </div>
+      <nav class="sidebar-nav" aria-label="Primary">
+        <a href="#overview">Overview</a>
+        <a href="#forecast">Forecast</a>
+        <a href="#history">History</a>
+        <a href="#risk">Risk</a>
+        <a href="#map">Map</a>
+      </nav>
+      <div class="sidebar-footnote">
+        <p>Backend: Flask</p>
+        <p>Live data: Open-Meteo + WAQI + Nominatim</p>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Production-ready climate dashboard</p>
+          <h1>ATLAS Climate Intelligence Platform</h1>
+        </div>
+        <div class="topbar-actions">
+          <span id="last-updated" class="last-updated" aria-live="polite">Last updated: --:--:--</span>
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle light and dark theme">
+            <span class="theme-toggle-track">
+              <span class="theme-toggle-thumb"></span>
+            </span>
+            <span id="theme-toggle-label">Dark</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="hero" id="overview">
+        <div class="search-panel">
+          <label class="sr-only" for="city-search">Search city, village, or state</label>
+          <div class="search-row">
+            <input id="city-search" type="text" maxlength="100" placeholder="Search city, village, or state..." aria-label="Search city, village, or state">
+            <button id="search-button" type="button" aria-label="Search climate data">
+              <span class="button-text">Search Climate Data</span>
+              <span class="button-spinner" hidden></span>
+            </button>
+          </div>
+          <div id="recent-searches" class="recent-searches" aria-live="polite"></div>
+        </div>
+        <div class="hero-summary">
+          <p id="location-name" class="hero-location">New York</p>
+          <h2 id="location-display">Loading climate summary</h2>
+          <p id="location-description" class="muted-copy">Real-time weather, AQI, historical climate, and risk scoring.</p>
+        </div>
+      </section>
+
+      <section class="cards-grid" aria-label="Climate summary cards">
+        <article class="metric-card card-cycle-1">
+          <span class="metric-icon" aria-hidden="true">🌡</span>
+          <h3>Temperature</h3>
+          <p id="temperature-card" class="metric-value skeleton">--</p>
+        </article>
+        <article class="metric-card card-cycle-2">
+          <span class="metric-icon" aria-hidden="true">💧</span>
+          <h3>Humidity</h3>
+          <p id="humidity-card" class="metric-value skeleton">--</p>
+        </article>
+        <article class="metric-card card-cycle-3">
+          <span class="metric-icon" aria-hidden="true">💨</span>
+          <h3>Wind Speed</h3>
+          <p id="wind-card" class="metric-value skeleton">--</p>
+        </article>
+        <article class="metric-card card-cycle-4">
+          <span class="metric-icon" aria-hidden="true">🫁</span>
+          <h3>AQI</h3>
+          <p id="aqi-card" class="metric-value skeleton">--</p>
+        </article>
+        <article class="metric-card card-cycle-5">
+          <span class="metric-icon" aria-hidden="true">⚠</span>
+          <h3>Risk Index</h3>
+          <p id="risk-card" class="metric-value skeleton">--</p>
+        </article>
+      </section>
+
+      <section class="layout-grid">
+        <article class="panel" id="forecast">
+          <div class="panel-header">
+            <h3>Temperature Forecast</h3>
+            <p>24-hour outlook</p>
+          </div>
+          <canvas id="temperature-forecast-chart" aria-label="Temperature forecast chart"></canvas>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h3>Precipitation Outlook</h3>
+            <p>24-hour precipitation</p>
+          </div>
+          <canvas id="precipitation-chart" aria-label="Precipitation chart"></canvas>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h3>Pollutant Breakdown</h3>
+            <p>Air quality components</p>
+          </div>
+          <canvas id="air-quality-chart" aria-label="Air quality chart"></canvas>
+        </article>
+
+        <article class="panel" id="risk">
+          <div class="panel-header">
+            <h3>Risk Radar</h3>
+            <p>Composite factor profile</p>
+          </div>
+          <canvas id="risk-index-chart" aria-label="Risk factor chart"></canvas>
+        </article>
+
+        <article class="panel panel-wide" id="history">
+          <div class="panel-header">
+            <h3>Historical Comparison</h3>
+            <p>Current period vs same period previous year</p>
+          </div>
+          <canvas id="historical-comparison-chart" aria-label="Historical comparison chart"></canvas>
+        </article>
+
+        <article class="panel panel-wide" id="map">
+          <div class="panel-header">
+            <h3>Location Map</h3>
+            <p>City marker with live popup</p>
+          </div>
+          <div id="atlas-map" class="map-panel" aria-label="Climate map"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast-region" class="toast-region" aria-live="assertive" aria-atomic="true"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script type="module" src="/js/dashboard.js"></script>
+</body>
+</html>

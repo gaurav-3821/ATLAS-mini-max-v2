@@ -1,129 +1,116 @@
 # ATLAS Climate Intelligence Platform
 
-ATLAS is a dark, multi-page Streamlit climate product built around stable live APIs, historical NetCDF analysis, risk scoring, model-assisted forecasting, and report generation.
+This repository now contains two application paths:
 
-The current build blends:
+- the existing Streamlit prototype at [app.py](/C:/Users/Gaurav/Documents/ATLAS%20v3/app.py)
+- a new full-stack Flask + static frontend implementation under [backend](/C:/Users/Gaurav/Documents/ATLAS%20v3/backend) and [frontend](/C:/Users/Gaurav/Documents/ATLAS%20v3/frontend)
 
-- NASA-style scientific visualization
-- Apple-inspired glass minimalism
-- neobrutalist card accents and interaction styling
+## Full-Stack Architecture
 
-## Product Modules
+Backend:
 
-- `Landing`: premium product intro with global preview and source status
-- `Story Mode`: guided climate narrative with chapter-based maps, charts, and projections
-- `Dashboard`: live climate metrics, AQI, forecast, and risk radar
-- `Global Map`: interactive globe, heatmaps, hotspots, and satellite context
-- `Climate Signals`: long-range anomalies and comparison views
-- `Risk Intelligence`: flood, wildfire, heatwave, storm, and AQI scoring
-- `Predictions`: model-assisted outlooks and natural-language query steering
-- `Data Explorer`: open exploration, local extraction, compare mode, and timelapse
-- `Research Lab`: dataset upload, scenario simulation, and model testing
-- `Reports`: markdown and PDF climate briefing export
-- `Settings`: API credential inputs and source readiness
+- Flask 3.1
+- Flask-CORS
+- Flask-Limiter
+- cachetools TTLCache
+- python-dotenv
+- requests
 
-## Live APIs
+Frontend:
 
-Deploy-profile live integrations:
+- semantic HTML
+- CSS variables with dark and light neobrutal themes
+- vanilla ES modules
+- Chart.js 4
+- Leaflet 1.9
 
-- `NASA GIBS`
-- `NOAA Climate Data Online`
-- `OpenWeatherMap`
+Live services:
 
-Deferred for the hackathon deploy profile:
+- Nominatim for geocoding
+- Open-Meteo forecast
+- Open-Meteo ERA5 archive
+- WAQI for air quality
 
-- `Copernicus Climate Data`
-- `Google Earth Engine`
+## Full-Stack Setup
 
-## Credentials
-
-ATLAS now defaults to server-side credentials only:
-
-1. environment variables
-2. `.streamlit/secrets.toml`
-3. optional runtime inputs only when `ATLAS_ENABLE_RUNTIME_CREDENTIAL_INPUTS=true`
-
-Supported names:
+1. Create the environment file at [backend/.env](/C:/Users/Gaurav/Documents/ATLAS%20v3/backend/.env)
+2. Install backend dependencies:
 
 ```bash
-OPENWEATHER_API_KEY=<your key>
-NOAA_API_TOKEN=<your token>
-ATLAS_DEFAULT_LOCATION=Delhi, IN
-ATLAS_ENABLE_RUNTIME_CREDENTIAL_INPUTS=false
-```
-
-An example template is included at `.streamlit/secrets.example.toml`.
-
-## Local Setup
-
-1. Create and activate a Python 3.10+ environment.
-2. Install dependencies:
-
-```bash
+cd backend
 pip install -r requirements.txt
 ```
 
-3. Start the app:
+3. Start the Flask app in development:
+
+```bash
+flask --app app run --debug --port 5000
+```
+
+4. Open [http://127.0.0.1:5000](http://127.0.0.1:5000)
+
+Environment variables:
+
+```bash
+WAQI_API_KEY=your_waqi_token_here
+FLASK_ENV=development
+FLASK_DEBUG=1
+SECRET_KEY=change_me_for_production
+```
+
+## API Endpoints
+
+- `GET /api/health`
+- `GET /api/location?city=Delhi`
+- `GET /api/weather?lat=28.61&lon=77.20`
+- `GET /api/air-quality?lat=28.61&lon=77.20`
+- `GET /api/history?lat=28.61&lon=77.20`
+- `GET /api/climate-summary?city=New York`
+
+`/api/climate-summary` resolves the city and then calls weather, AQI, and history in parallel with `ThreadPoolExecutor`.
+
+## Testing
+
+Run the backend tests:
+
+```bash
+cd backend
+pytest
+```
+
+The tests mock all external API calls and cover:
+
+- city validation and geocoding
+- weather formatting
+- AQI formatting and graceful fallback
+- risk score calculation
+- climate-summary integration
+- rate limiting
+
+## Docker
+
+Files:
+
+- [docker/Dockerfile](/C:/Users/Gaurav/Documents/ATLAS%20v3/docker/Dockerfile)
+- [docker/docker-compose.yml](/C:/Users/Gaurav/Documents/ATLAS%20v3/docker/docker-compose.yml)
+- [docker/nginx.conf](/C:/Users/Gaurav/Documents/ATLAS%20v3/docker/nginx.conf)
+
+Run:
+
+```bash
+cd docker
+docker compose up --build
+```
+
+This starts:
+
+- Flask backend on Gunicorn
+- Nginx reverse proxy on `http://localhost:8080`
+
+## Legacy Streamlit App
+
+The original Streamlit app is still available for comparison and demo continuity:
 
 ```bash
 streamlit run app.py
 ```
-
-4. Add server-side credentials through `.streamlit/secrets.toml` or environment variables.
-
-## One-Click Deploy
-
-ATLAS includes `render.yaml` for a simple Render deployment.
-
-Set these environment variables in the host:
-
-```bash
-OPENWEATHER_API_KEY=<your key>
-NOAA_API_TOKEN=<your token>
-ATLAS_DEFAULT_LOCATION=Delhi, IN
-ATLAS_ENABLE_RUNTIME_CREDENTIAL_INPUTS=false
-```
-
-## Verification
-
-Run the lightweight smoke test:
-
-```bash
-python smoke_check.py
-```
-
-Expected output:
-
-```text
-ATLAS smoke check passed.
-```
-
-Run the live provider check before deployment:
-
-```bash
-python live_api_check.py
-```
-
-This verifies the configured OpenWeather, NOAA, and NASA GIBS paths against a known diagnostic location.
-
-## Historical Dataset
-
-The bundled synthetic dataset is generated automatically on first launch and includes:
-
-- `t2m`
-- `precipitation`
-- `sea_level_pressure`
-- `wind_speed`
-
-Expected coordinate names:
-
-- `time`
-- `lat` or `latitude`
-- `lon` or `longitude`
-
-## Notes
-
-- The historical workspace remains usable even when live APIs are offline.
-- `Reports` falls back to markdown bytes if PDF libraries are unavailable.
-- `runtime.txt` pins the hosted Python version for Streamlit deployments.
-- Copernicus and Google Earth Engine were intentionally deferred from the deploy profile to keep the hackathon demo reliable.

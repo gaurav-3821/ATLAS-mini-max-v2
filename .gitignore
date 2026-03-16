@@ -16,3 +16,8 @@ review-*.png
 *-demo.png
 atlas-review-board.png
 atlas-graph-review-board.png
+backend/.env
+logs/
+backend/__pycache__/
+backend/tests/__pycache__/
+frontend/.DS_Store
