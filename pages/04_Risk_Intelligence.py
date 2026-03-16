@@ -12,7 +12,14 @@ from utils.chart_factory import (
     create_risk_radar,
     create_station_history_figure,
 )
-from utils.live_data import fetch_air_quality, fetch_forecast, fetch_noaa_station_history, fetch_current_weather, get_default_location_query, resolve_location
+from utils.live_data import (
+    fetch_air_quality,
+    fetch_forecast,
+    fetch_historical_climate_context,
+    fetch_current_weather,
+    get_default_location_query,
+    resolve_location,
+)
 from utils.risk_engine import build_risk_profile, build_risk_timeline
 from utils.style import render_app_shell, render_feature_card, render_info_banner, render_metric_card, render_page_hero, render_section_intro
 
@@ -65,27 +72,26 @@ def main() -> None:
         default_query = st.session_state.get("atlas_ops_location", get_default_location_query())
         location_query = st.text_input("Target location", value=default_query)
         st.session_state["atlas_ops_location"] = location_query
-        history_days = st.slider("NOAA lookback", min_value=14, max_value=90, value=45, step=1)
+        history_days = st.slider("History lookback", min_value=14, max_value=90, value=45, step=1)
 
     try:
         location, resolved_weather = resolve_location(location_query)
         weather = resolved_weather or fetch_current_weather(location["lat"], location["lon"])
         forecast_df = fetch_forecast(location["lat"], location["lon"])
         air_current, air_forecast = fetch_air_quality(location["lat"], location["lon"])
-        try:
-            noaa_result = fetch_noaa_station_history(location["lat"], location["lon"], days=history_days)
-        except Exception:
-            noaa_result = None
-        history_df = noaa_result["history"] if noaa_result else None
-        risk_profile = build_risk_profile(weather, forecast_df, air_current, history_df)
-        risk_timeline = build_risk_timeline(forecast_df)
-        render_info_banner(
-            f"Risk scoring for {location['label']} is blending live weather, AQI, forecast progression, and any nearby NOAA ground observations."
-        )
+        climate_result = fetch_historical_climate_context(location["lat"], location["lon"], days=history_days)
+        history_df = climate_result["history"] if climate_result else None
+        history_source = climate_result["source"] if climate_result else "No historical source"
     except Exception as exc:
         st.warning(f"Risk Intelligence could not connect to the live stack: {exc}")
         st.info("Add valid API credentials in Settings or use coordinates for the target location.")
         return
+
+    risk_profile = build_risk_profile(weather, forecast_df, air_current, history_df)
+    risk_timeline = build_risk_timeline(forecast_df)
+    render_info_banner(
+        f"Risk scoring for {location['label']} is blending live weather, AQI, forecast progression, and historical context from {history_source}."
+    )
 
     metric_cols = st.columns(5)
     for column, title in zip(metric_cols, ["Heatwave", "Flood", "Wildfire", "Storm", "Composite"]):
@@ -153,9 +159,9 @@ def main() -> None:
                 render_feature_card("Triggered alert", alert)
         else:
             render_feature_card("No elevated alerts", "Current hazard rules are not flagging major operational concern.")
-        if noaa_result and history_df is not None and not history_df.empty:
+        if climate_result and history_df is not None and not history_df.empty:
             st.plotly_chart(
-                create_station_history_figure(history_df, title=f"{noaa_result['station']['name']} station history"),
+                create_station_history_figure(history_df, title=f"{climate_result['station']['name']} station history"),
                 use_container_width=True,
             )
 

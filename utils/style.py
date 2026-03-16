@@ -20,27 +20,96 @@ NAV_ITEMS = [
 ]
 
 
-ATLAS_CSS = """
+THEMES = {
+    "dark": {
+        "bg_primary": "#0B0F1A",
+        "bg_secondary": "#111827",
+        "card_bg": "rgba(21, 26, 46, 0.86)",
+        "card_glass": "rgba(17, 24, 39, 0.72)",
+        "border": "#000000",
+        "cyan": "#00E5FF",
+        "yellow": "#FFD84D",
+        "green": "#6EFF9A",
+        "pink": "#FF5C8A",
+        "text": "#FFFFFF",
+        "muted": "#9CA3AF",
+        "shadow_hard": "6px 6px 0px #000000",
+        "shadow_soft": "0 10px 30px rgba(0,0,0,0.25)",
+        "grid_line": "rgba(255,255,255,0.04)",
+        "app_background": """
+            radial-gradient(circle at 14% 18%, rgba(0,229,255,0.12), transparent 24%),
+            radial-gradient(circle at 88% 10%, rgba(255,92,138,0.12), transparent 20%),
+            radial-gradient(circle at 50% 100%, rgba(110,255,154,0.08), transparent 26%),
+            linear-gradient(180deg, #09101d 0%, #0b0f1a 42%, #101827 100%)
+        """,
+        "button_bg": "linear-gradient(135deg, #12233a 0%, #0f172a 100%)",
+        "button_text": "#FFFFFF",
+        "button_border": "rgba(0,229,255,0.28)",
+        "input_bg": "rgba(17,24,39,0.92)",
+        "input_text": "#FFFFFF",
+        "sidebar_bg": "linear-gradient(180deg, rgba(11,15,26,0.96) 0%, rgba(17,24,39,0.97) 100%)",
+        "hero_bg": """
+            radial-gradient(circle at top right, rgba(0,229,255,0.14), transparent 32%),
+            radial-gradient(circle at 18% 0%, rgba(255,92,138,0.12), transparent 20%),
+            linear-gradient(135deg, rgba(21,26,46,0.98) 0%, rgba(11,15,26,1) 100%)
+        """,
+    },
+    "light": {
+        "bg_primary": "#F6F7FF",
+        "bg_secondary": "#FFFFFF",
+        "card_bg": "rgba(255, 255, 255, 0.96)",
+        "card_glass": "rgba(255, 255, 255, 0.92)",
+        "border": "#000000",
+        "cyan": "#5AD7FF",
+        "yellow": "#FFD84D",
+        "green": "#7FFFA1",
+        "pink": "#FF6B9A",
+        "text": "#000000",
+        "muted": "#374151",
+        "shadow_hard": "6px 6px 0px #000000",
+        "shadow_soft": "0 10px 30px rgba(0,0,0,0.10)",
+        "grid_line": "rgba(0,0,0,0.05)",
+        "app_background": """
+            radial-gradient(circle at 16% 18%, rgba(90,215,255,0.18), transparent 24%),
+            radial-gradient(circle at 84% 12%, rgba(255,107,154,0.16), transparent 22%),
+            linear-gradient(180deg, #fffdf5 0%, #f6f7ff 48%, #eef6ff 100%)
+        """,
+        "button_bg": "#FFD84D",
+        "button_text": "#000000",
+        "button_border": "#000000",
+        "input_bg": "#FFF6CC",
+        "input_text": "#000000",
+        "sidebar_bg": "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,247,255,1) 100%)",
+        "hero_bg": """
+            radial-gradient(circle at top right, rgba(90,215,255,0.18), transparent 30%),
+            radial-gradient(circle at 10% 0%, rgba(255,107,154,0.16), transparent 18%),
+            linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(246,247,255,1) 100%)
+        """,
+    },
+}
+
+
+ATLAS_CSS_TEMPLATE = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@500;700&display=swap');
 
     :root {
-        --atlas-bg-primary: #0B0F1A;
-        --atlas-bg-secondary: #111827;
-        --atlas-card-bg: rgba(21, 26, 46, 0.86);
-        --atlas-card-glass: rgba(17, 24, 39, 0.72);
-        --atlas-border: #000000;
-        --atlas-cyan: #00E5FF;
-        --atlas-yellow: #FFD84D;
-        --atlas-green: #6EFF9A;
-        --atlas-pink: #FF5C8A;
-        --atlas-text: #FFFFFF;
-        --atlas-muted: #9CA3AF;
-        --atlas-shadow-hard: 6px 6px 0px #000000;
-        --atlas-shadow-soft: 0 10px 30px rgba(0,0,0,0.25);
+        --atlas-bg-primary: __BG_PRIMARY__;
+        --atlas-bg-secondary: __BG_SECONDARY__;
+        --atlas-card-bg: __CARD_BG__;
+        --atlas-card-glass: __CARD_GLASS__;
+        --atlas-border: __BORDER__;
+        --atlas-cyan: __CYAN__;
+        --atlas-yellow: __YELLOW__;
+        --atlas-green: __GREEN__;
+        --atlas-pink: __PINK__;
+        --atlas-text: __TEXT__;
+        --atlas-muted: __MUTED__;
+        --atlas-shadow-hard: __SHADOW_HARD__;
+        --atlas-shadow-soft: __SHADOW_SOFT__;
         --atlas-radius: 14px;
         --atlas-border-width: 3px;
-        --atlas-grid-line: rgba(255,255,255,0.04);
+        --atlas-grid-line: __GRID_LINE__;
     }
 
     html, body, [class*="css"] {
@@ -48,11 +117,7 @@ ATLAS_CSS = """
     }
 
     .stApp {
-        background:
-            radial-gradient(circle at 14% 18%, rgba(0,229,255,0.12), transparent 24%),
-            radial-gradient(circle at 88% 10%, rgba(255,92,138,0.12), transparent 20%),
-            radial-gradient(circle at 50% 100%, rgba(110,255,154,0.08), transparent 26%),
-            linear-gradient(180deg, #09101d 0%, #0b0f1a 42%, #101827 100%);
+        background: __APP_BACKGROUND__;
         color: var(--atlas-text);
     }
 
@@ -102,8 +167,7 @@ ATLAS_CSS = """
     }
 
     [data-testid="stSidebar"] > div:first-child {
-        background:
-            linear-gradient(180deg, rgba(11,15,26,0.96) 0%, rgba(17,24,39,0.97) 100%);
+        background: __SIDEBAR_BG__;
         border-right: var(--atlas-border-width) solid var(--atlas-border);
         box-shadow: 10px 0 30px rgba(0,0,0,0.22);
     }
@@ -241,9 +305,9 @@ ATLAS_CSS = """
     .stLinkButton > a,
     .stFormSubmitButton > button {
         border-radius: 12px !important;
-        border: var(--atlas-border-width) solid var(--atlas-border) !important;
-        background: linear-gradient(135deg, rgba(0,229,255,0.96) 0%, rgba(255,216,77,0.98) 100%) !important;
-        color: #0B0F1A !important;
+        border: var(--atlas-border-width) solid __BUTTON_BORDER__ !important;
+        background: __BUTTON_BG__ !important;
+        color: __BUTTON_TEXT__ !important;
         font-weight: 800 !important;
         box-shadow: var(--atlas-shadow-hard) !important;
         min-height: 2.9rem !important;
@@ -264,8 +328,8 @@ ATLAS_CSS = """
     .stDateInput input,
     .stSelectbox [data-baseweb="select"],
     .stMultiSelect [data-baseweb="select"] {
-        color: var(--atlas-text) !important;
-        background: rgba(17,24,39,0.92) !important;
+        color: __INPUT_TEXT__ !important;
+        background: __INPUT_BG__ !important;
         border: var(--atlas-border-width) solid var(--atlas-border) !important;
         border-radius: 12px !important;
         box-shadow: 3px 3px 0px #000000 !important;
@@ -312,10 +376,7 @@ ATLAS_CSS = """
     .atlas-hero {
         padding: 2.3rem;
         margin-bottom: 1.2rem;
-        background:
-            radial-gradient(circle at top right, rgba(0,229,255,0.14), transparent 32%),
-            radial-gradient(circle at 18% 0%, rgba(255,92,138,0.12), transparent 20%),
-            linear-gradient(135deg, rgba(21,26,46,0.98) 0%, rgba(11,15,26,1) 100%);
+        background: __HERO_BG__;
         animation: atlasFadeUp 0.5s ease-out;
     }
 
@@ -536,12 +597,49 @@ def _escape(value: str) -> str:
     return html.escape(value, quote=True)
 
 
+def _theme_key() -> str:
+    return st.session_state.get("atlas_theme", "dark")
+
+
+def _build_atlas_css(theme_key: str) -> str:
+    theme = THEMES[theme_key]
+    css = ATLAS_CSS_TEMPLATE
+    replacements = {
+        "__BG_PRIMARY__": theme["bg_primary"],
+        "__BG_SECONDARY__": theme["bg_secondary"],
+        "__CARD_BG__": theme["card_bg"],
+        "__CARD_GLASS__": theme["card_glass"],
+        "__BORDER__": theme["border"],
+        "__CYAN__": theme["cyan"],
+        "__YELLOW__": theme["yellow"],
+        "__GREEN__": theme["green"],
+        "__PINK__": theme["pink"],
+        "__TEXT__": theme["text"],
+        "__MUTED__": theme["muted"],
+        "__SHADOW_HARD__": theme["shadow_hard"],
+        "__SHADOW_SOFT__": theme["shadow_soft"],
+        "__GRID_LINE__": theme["grid_line"],
+        "__APP_BACKGROUND__": theme["app_background"].strip(),
+        "__BUTTON_BG__": theme["button_bg"],
+        "__BUTTON_TEXT__": theme["button_text"],
+        "__BUTTON_BORDER__": theme["button_border"],
+        "__INPUT_BG__": theme["input_bg"],
+        "__INPUT_TEXT__": theme["input_text"],
+        "__SIDEBAR_BG__": theme["sidebar_bg"],
+        "__HERO_BG__": theme["hero_bg"].strip(),
+    }
+    for key, value in replacements.items():
+        css = css.replace(key, value)
+    return css
+
+
 def apply_atlas_theme() -> None:
-    st.markdown(ATLAS_CSS, unsafe_allow_html=True)
+    st.markdown(_build_atlas_css(_theme_key()), unsafe_allow_html=True)
 
 
 def render_sidebar_navigation(active_page: str) -> None:
     with st.sidebar:
+        st.session_state.setdefault("atlas_theme", "dark")
         st.markdown(
             """
             <div class="atlas-side-brand">
@@ -553,6 +651,14 @@ def render_sidebar_navigation(active_page: str) -> None:
             unsafe_allow_html=True,
         )
         st.page_link("app.py", label="Landing", icon=":material/rocket_launch:")
+        theme_label = st.radio(
+            "Theme",
+            options=["Dark Orbital", "Light Brutal"],
+            index=0 if st.session_state.get("atlas_theme", "dark") == "dark" else 1,
+            key=f"atlas_theme_selector_{active_page.lower().replace(' ', '_')}",
+            horizontal=False,
+        )
+        st.session_state["atlas_theme"] = "dark" if theme_label == "Dark Orbital" else "light"
         st.text_input(
             "Sidebar Search",
             key="atlas_sidebar_search",
@@ -567,11 +673,11 @@ def render_sidebar_navigation(active_page: str) -> None:
         st.markdown(
             """
             <div class="atlas-nav-panel">
-                <p class="atlas-nav-caption">Theme: Dark orbital mode</p>
+                <p class="atlas-nav-caption">Theme: {theme_name}</p>
                 <p class="atlas-nav-caption">Layout: 12-column responsive shell</p>
                 <p class="atlas-nav-caption">UI mix: NASA science + Apple glass + neobrutal cards</p>
             </div>
-            """,
+            """.format(theme_name="Dark orbital mode" if st.session_state["atlas_theme"] == "dark" else "Light neobrutal mode"),
             unsafe_allow_html=True,
         )
 
@@ -614,8 +720,8 @@ def render_topbar(active_page: str, subtitle: str, search_placeholder: str = "Se
 
 
 def render_app_shell(active_page: str, subtitle: str, search_placeholder: str = "Search climate signals, regions, or datasets") -> str:
-    apply_atlas_theme()
     render_sidebar_navigation(active_page)
+    apply_atlas_theme()
     return render_topbar(active_page, subtitle, search_placeholder)
 
 
