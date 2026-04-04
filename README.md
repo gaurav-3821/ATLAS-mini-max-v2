@@ -28,6 +28,7 @@
 ---
 
 ## 🏗️ Architecture
+```text
 ATLAS-minimax-v2/
 ├── app.py                  # Streamlit legacy app
 ├── backend/                # Flask REST API
